@@ -67,7 +67,7 @@ class k8000_dimmed(light,Fader):
     def setdacchannel(self,chan):
         self.chan = chan
     def _changelevel(self):
-        OutputDACchannel(self.chan,round(self.tclevel*64))
+        OutputDACchannel(self.chan,int(round(self.tclevel*64)))
         UpdateAllDAC() # terrible - should get called after a -round- of settings
 
 class k8000_nd(light,Fader):
