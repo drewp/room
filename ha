@@ -313,7 +313,6 @@ class task_screenmotor(Task):
             
             log.info("screenmotor position %s" % self.pos)
             self.oldsens = sens
-            getlightbyname("drewdesk").setlevel(sens)
         return 1
 
 vol = Volume()
@@ -327,7 +326,6 @@ tasks.append(phonetask)
 tasks.append(task_door())
 tasks.append(task_pager())
 tasks.append(task_vol_slider())
-#tasks.append(task_lights_server())
 tasks.append(task_screenmotor())
 
 class LightsServer(xmlrpc.XMLRPC):
@@ -335,9 +333,10 @@ class LightsServer(xmlrpc.XMLRPC):
         l = getlightbyname(lightname)
         return float(l.getlevel())
     def xmlrpc_setLight(self,lightname,level):
+        level = float(level)
         l = getlightbyname(lightname)
-        l.setlevel(float(level))
-        return "ok"
+        l.setlevel(level)
+        return level
     def xmlrpc_listLights(self):
         return [l.getname() for l in lights]
 reactor.listenTCP(socket.getservbyname('lights','tcp'),
@@ -355,7 +354,6 @@ def backgroundtasks():
         if not x.step():
             tasks.remove(x)
     reactor.callLater(.005+.2*debug, backgroundtasks)
-
 
 backgroundtasks()
 
