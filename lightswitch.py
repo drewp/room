@@ -65,18 +65,17 @@ class Slider(tk.Frame):
         reactor.callLater(1,self.getLightLoop)
         
 
-parser = OptionParser(usage="%prog lightname")
-
+parser = OptionParser()
 options,args = parser.parse_args()
-
-if len(args)<1:
-    parser.error("lightname argument is required")
-lightname = args[0]
 
 root=tk.Tk()
 
-e = Slider(root,lightname)
-e.pack()
+def setupSliders(lightnames):
+    for lightname in lightnames:
+        e = Slider(root,lightname)
+        e.pack(side='left')
+
+lightCall("listLights").addCallback(setupSliders)
 
 tksupport.install(root)
 root.protocol('WM_DELETE_WINDOW', reactor.stop)
