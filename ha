@@ -8,7 +8,11 @@ from light import *
 from volume import Volume
 from sys import stdout
 import logging
-import SocketServer,socket,thread,time
+import time
+import SocketServer,thread,socket
+
+from twisted.web import xmlrpc, server
+from twisted.internet import reactor
 
 def commonlogsetup(excludechannels=[]):
     """sets up logs how i usually like them, with a custom filter to
@@ -21,10 +25,11 @@ def commonlogsetup(excludechannels=[]):
             return record.name not in excludechannels
     log=logging.getLogger()
     log.setLevel(logging.DEBUG)
-    h=logging.StreamHandler()
-    h.setFormatter(logging.Formatter("%(created)s %(asctime)s %(levelname)-5s %(filename)s:%(lineno)d: %(message)s"))
-    h.addFilter(myfilter())
-    log.addHandler(h)
+
+    for h in logging.StreamHandler(), logging.FileHandler("log"):
+        h.setFormatter(logging.Formatter("%(created)s %(asctime)s %(levelname)-5s %(filename)s:%(lineno)d: %(message)s"))
+        h.addFilter(myfilter())
+        log.addHandler(h)
     return log
 
 log=commonlogsetup()
@@ -58,13 +63,12 @@ class pager_client:
             pass
 
 
-lights = [ k8000_dimmed('table',1),
-           k8000_dimmed('swinging',2),
-           k8000_dimmed('BCR',3),
-           k8000_dimmed('LCL',4),
-           k8000_dimmed('hall',5),
-           k8000_dimmed('drewdesk',8), # <-- the only working one, for now
+lights = [ 
+           k8000_dimmed('drewdesk',8),
+           k8000_dimmed('couchleft',7),
            k8000_nd('deskhalo',13),
+           k8000_nd('screenmotor0',14),
+           k8000_nd('screenmotor1',15),
            Rainbow('rainbow1',0),
            Rainbow('rainbow2',1)]
 
@@ -75,11 +79,10 @@ def getlightbyname(name):
     return None
 
 
-params = [["swinging",.3,.65,1],["hall",.35,.55,1],
-          ["LCL",.4,.7,1],["BCR",.35,.55,1],["table",.28,.65,1]]
-
-for p in params:
-    getlightbyname(p[0]).settcparams(p[1],p[2],p[3])
+#params = [["swinging",.3,.65,1],["hall",.35,.55,1],
+#          ["LCL",.4,.7,1],["BCR",.35,.55,1],["table",.28,.65,1]]
+#for p in params:
+#    getlightbyname(p[0]).settcparams(p[1],p[2],p[3])
 
 prev = 0
 lev = 0
@@ -158,6 +161,7 @@ class task_wallswitches(Task):
     prevsw = 0
     downtime = 0
     def step(self):
+        # note- chan 9 has been reused for screenmotor
         sw = ReadIOchannel(12) * 8 + ReadIOchannel(9) * 4 + \
              ReadIOchannel(10) * 2 + ReadIOchannel(11)
 
@@ -294,6 +298,24 @@ class task_door(Task):
         return 1
 
 
+class task_screenmotor(Task):
+    def __init__(self):
+        self.oldsens = False
+        self.pos = 0
+    def step(self):
+        sens = not ReadIOchannel(9)
+        
+        if sens != self.oldsens:
+            if getlightbyname("screenmotor0").getlevel():
+                self.pos += 1
+            if getlightbyname("screenmotor1").getlevel():
+                self.pos -= 1
+            
+            log.info("screenmotor position %s" % self.pos)
+            self.oldsens = sens
+            getlightbyname("drewdesk").setlevel(sens)
+        return 1
+
 vol = Volume()
 
 #task_wallswitches()
@@ -305,10 +327,22 @@ tasks.append(phonetask)
 tasks.append(task_door())
 tasks.append(task_pager())
 tasks.append(task_vol_slider())
-tasks.append(task_lights_server())
+#tasks.append(task_lights_server())
+tasks.append(task_screenmotor())
 
-from threading import *
-
+class LightsServer(xmlrpc.XMLRPC):
+    def xmlrpc_getLight(self,lightname):
+        l = getlightbyname(lightname)
+        return float(l.getlevel())
+    def xmlrpc_setLight(self,lightname,level):
+        l = getlightbyname(lightname)
+        l.setlevel(float(level))
+        return "ok"
+    def xmlrpc_listLights(self):
+        return [l.getname() for l in lights]
+reactor.listenTCP(socket.getservbyname('lights','tcp'),
+                  server.Site(LightsServer()))
+        
 
 debug=0
 if debug:
@@ -317,11 +351,12 @@ else:
   log.setLevel(logging.INFO)
 
 def backgroundtasks():
-    while 1:
-        #    print 'have %i tasks' % len(tasks)
-        for x in tasks:
-            if not x.step():
-                tasks.remove(x)
-        time.sleep(.005+.2*debug)
+    for x in tasks:
+        if not x.step():
+            tasks.remove(x)
+    reactor.callLater(.005+.2*debug, backgroundtasks)
 
-Thread(target=backgroundtasks).run()
+
+backgroundtasks()
+
+reactor.run()

@@ -117,7 +117,7 @@ initk8000()
     fprintf(stderr,"can't start k8000; only root can open the port\n");
     exit(1);
   }
-  if(!ioperm(0x378, 3, 1)) {
+  if(ioperm(0x378, 3, 1)) {
     perror("opening port");
     exit(1);
   }
