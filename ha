@@ -62,15 +62,38 @@ class pager_client:
             #print 'pager_client: socket err %s' % num
             pass
 
-
+digi = dict(
+    pager0=1,
+    pager1=2,
+    pager2=3,
+    pager3=4,
+    offhook=5,
+    dooropen=6,
+    doorstrike=7,
+    motion=8,
+    screenpos=9,
+    switches0=9, #unused
+    switches1=10,
+    switches2=11,
+    switches3=12,
+    deskhalo=13,
+    screenmotor0=14,
+    screenmotor1=15,
+    projector=16,
+    )
+    
 lights = [ 
            k8000_dimmed('drewdesk',8),
            k8000_dimmed('couchleft',7),
-           k8000_nd('deskhalo',13),
-           k8000_nd('screenmotor0',14),
-           k8000_nd('screenmotor1',15),
-           Rainbow('rainbow1',0),
-           Rainbow('rainbow2',1)]
+           k8000_dimmed('couchright',6),
+           k8000_dimmed('dining',5),
+           k8000_nd('deskhalo',digi['deskhalo']),
+           k8000_nd('screenmotor0',digi['screenmotor0']),
+           k8000_nd('screenmotor1',digi['screenmotor1']),
+           k8000_nd('projector',digi['projector']),
+#           Rainbow('rainbow1',0),
+#           Rainbow('rainbow2',1)
+           ]
 
 def getlightbyname(name):
     for x in lights:
@@ -91,7 +114,10 @@ from task import Task
 
 class task_pager(Task):
     def step(self):
-        pagersw = ReadIOchannel(1) + ReadIOchannel(2)*2 + ReadIOchannel(3)*4 + ReadIOchannel(4) *8
+        pagersw = (ReadIOchannel(digi['pager0']) +
+                   ReadIOchannel(digi['pager1'])*2 +
+                   ReadIOchannel(digi['pager2'])*4 +
+                   ReadIOchannel(digi['pager3']) *8)
         if pagersw:
             # send page number to the FVWM RealPager module
             pagersw = pagersw-1
@@ -110,7 +136,7 @@ class task_phone(Task):
         return self.offtime!=0
     def step(self):
     
-        oh = ReadIOchannel(5)
+        oh = ReadIOchannel(digi['offhook'])
         log.debug("phone reads %s" % oh)
 
         if oh != self.prevoh:
@@ -162,8 +188,10 @@ class task_wallswitches(Task):
     downtime = 0
     def step(self):
         # note- chan 9 has been reused for screenmotor
-        sw = ReadIOchannel(12) * 8 + ReadIOchannel(9) * 4 + \
-             ReadIOchannel(10) * 2 + ReadIOchannel(11)
+        sw = (ReadIOchannel(digi['switches3']) * 8 +
+              ReadIOchannel(digi['switches0']) * 4 + 
+              ReadIOchannel(digi['switches1']) * 2 +
+              ReadIOchannel(digi['switches2']))
 
         action = "none"
         if sw:
@@ -225,13 +253,6 @@ class task_wallswitches(Task):
                             
         return 1
 
-class task_lights_server(Task):
-    def __init__(self):
-        self.ls = lights_server.lights_server(lights)
-    def step(self):
-        self.ls.dopoll(.02)
-        return 1
-
 class task_vol_slider(Task):
     avg = [0,0,0]
     i=0
@@ -258,8 +279,7 @@ class task_door(Task):
     door = 0 # 0=closed, 1=opened
     motion = 0 # 0=no, 1=yes
     def __init__(self):
-        self.strikechan=7
-        ConfigIOchannelAsOutput(self.strikechan) # chan 7 is output for door strike
+        ConfigIOchannelAsOutput(digi['doorstrike'])
 
         class BarcodeHandler(SocketServer.StreamRequestHandler):
             def handle(self):
@@ -270,27 +290,25 @@ class task_door(Task):
                 keys=barcodekeys.keys
                 if barcode in keys:
                     log.info("door unlocks for %s" % keys[barcode])
-                    SetIOchannel(7)#self.strikechan)
+                    SetIOchannel(digi['doorstrike'])
                     time.sleep(7)
-                    ClearIOchannel(7)#self.strikechan)
+                    ClearIOchannel(digi['doorstrike'])
                     
 
-        self.server=SocketServer.TCPServer( ('', socket.getservbyname('barcode','tcp')), BarcodeHandler)
+        self.server=SocketServer.TCPServer(('', socket.getservbyname('barcode',
+                                                                     'tcp')),
+                                           BarcodeHandler)
 
         thread.start_new_thread(self.server.serve_forever,())
         
     def step(self):
-
-#        SetIOchannel(self.strikechan)
-#        ClearIOchannel(self.strikechan)
-        
-        d = ReadIOchannel(6)
+        d = ReadIOchannel(digi['dooropen'])
         if d != self.door:
             self.door = d
             log.info('door %s' % (('close','open')[self.door]))
             stdout.flush()
 
-	m = not ReadIOchannel(8)
+	m = not ReadIOchannel(digi['motion'])
 	if m != self.motion: 
             self.motion = m
             log.info('motion %s' % (('no','yes')[self.motion]))
@@ -303,7 +321,7 @@ class task_screenmotor(Task):
         self.oldsens = False
         self.pos = 0
     def step(self):
-        sens = not ReadIOchannel(9)
+        sens = not ReadIOchannel(digi['screenpos'])
         
         if sens != self.oldsens:
             if getlightbyname("screenmotor0").getlevel():
@@ -315,10 +333,32 @@ class task_screenmotor(Task):
             self.oldsens = sens
         return 1
 
+class ambient_light(Task):
+    def __init__(self):
+        self.last_levs = []
+        self.window_size = 4
+        self.last_shown = 0
+        self.recent_reports = [] #times
+    def step(self):
+        x = ReadADchannel(3)
+        now = time.time()
+        self.recent_reports = [t for t in self.recent_reports if now-t<10]
+
+        self.last_levs = self.last_levs[:self.window_size-1] + [x]
+        avg = int(sum(self.last_levs) / len(self.last_levs))
+        if avg != self.last_shown:
+            delta = abs(avg - self.last_shown)
+            if delta > 2 and len(self.recent_reports) < 3:
+                log.info("ambient light at %s" % avg)
+                self.recent_reports.append(now)
+                self.last_shown = avg
+        return 1
+            
+
 vol = Volume()
 
 #task_wallswitches()
-#tasks = [ task_lights_server(), task_door() ]
+#tasks = [ task_door() ]
 tasks = []
 
 phonetask = task_phone()
@@ -327,6 +367,7 @@ tasks.append(task_door())
 tasks.append(task_pager())
 tasks.append(task_vol_slider())
 tasks.append(task_screenmotor())
+tasks.append(ambient_light())
 
 class LightsServer(xmlrpc.XMLRPC):
     def xmlrpc_getLight(self,lightname):
