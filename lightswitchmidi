@@ -1,0 +1,78 @@
+#!/usr/bin/python
+
+
+# http://infohost.nmt.edu/~dbaird/software/
+
+import os, select, time, xmlrpclib, socket
+from twisted.internet import reactor, tksupport, defer
+
+from pyalsamidi import pyalsamidi as amidi
+
+class NoteCode:
+    def __init__(self):
+        self.phrase = []
+        self.last_note_time = 0
+        self.connect()
+        
+    def connect(self):
+        self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
+                              socket.getservbyname("lights","tcp"))
+        
+
+    def event(self,ev):
+        if ev.data.__class__ != amidi.MidiEvent.NoteOn:
+            return
+
+        now = time.time()
+        if now - self.last_note_time > .5:
+            self.phrase[:] = []
+
+        self.last_note_time = now
+        self.phrase.append(ev.data.note)
+        
+        matched = self.action(self.phrase)
+        if matched:
+            self.phrase[:] = []
+
+    def set_lights(self, lev, names):
+        for n in names:
+            try:
+                self.light_server.setLight(n,lev)
+            except xmlrpclib.Fault, e:
+                print e, "on command setLight(%r,%r)" % (n,lev)
+                self.connect()
+
+    def action(self, phrase):
+        all = ['drewdesk', 'couchleft', 'couchright', 'dining']
+        if phrase == [60, 65]: # C F
+            self.set_lights(1, all)
+        elif phrase == [60, 63]: # C Eb
+            self.set_lights(.6, all)
+        elif phrase == [67, 60]: # G C
+            self.set_lights(0, all+['projector', 'deskhalo'])
+        else:
+            return False
+        return True
+
+seq = amidi.Sequencer('Test Sequencer')
+inp = seq.create_midiin('Test Midi In')
+
+nc = NoteCode()
+
+outp = seq.create_midiout('Test Midi Out')
+queue = seq.create_queue()
+ppq = 120
+queue.set_bpm(120, ppq)
+queue.start()
+
+# If you do not have a musical keyboard connected to 64:0, you might
+# need to modify this line:
+os.system('aconnect -t %d 64:0 %d:%d' % (queue.id, seq.id, inp.id))
+os.system('aconnect -t %d %d:%d 64:0' % (queue.id, seq.id, outp.id))
+
+while 1:
+    a, _, _ = select.select([inp], [], [], .1)
+    while (inp in a) or inp.events_pending():
+        a = []
+        ev = inp.read_event()
+        nc.event(ev)
