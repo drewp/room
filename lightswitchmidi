@@ -1,23 +1,66 @@
 #!/usr/bin/python
 
 
-# http://infohost.nmt.edu/~dbaird/software/
+# pyalsamidi at http://infohost.nmt.edu/~dbaird/software/
+
+# almost related: http://lists.w3.org/Archives/Public/www-archive/2001Nov/0033
+
+
+"""
+n3->rdf convertor at http://www.w3.org/DesignIssues/Notation3.html
+
+for n3 and querying, i should probably switch to librdf
+
+my original n3, which rdflib can't parse:
+
+@prefix : <http://projects.bigasterisk.com/room>.
+@prefix lights: <http://projects.bigasterisk.com/room/lights>.
+@prefix midi: <http://projects.bigasterisk.com/midi>.
+cmd1 midi:notes "60 65"; :triggers <dark>.
+<dark> :lightLevel [:light lights:couchleft; :to "0"], 
+                   [:light lights:couchright; :to "0"].
+"""
+
 
 import os, select, time, xmlrpclib, socket
 from twisted.internet import reactor, tksupport, defer
 
+from rdflib import Graph, RDF, Literal, Namespace, BNode
+
 from pyalsamidi import pyalsamidi as amidi
+
+LIGHT = Namespace("http://projects.bigasterisk.com/room/")
+MIDI = Namespace("http://projects.bigasterisk.com/midi/")
+
+if 0:
+    # this created the n3 that rdflib can read
+    gr.add((LIGHT['cmd1'], MIDI['notes'], Literal('60 65')))
+    gr.add((LIGHT['cmd1'], LIGHT['triggers'], LIGHT['dark']))
+
+    ll1 = BNode()
+    gr.add((LIGHT['dark'], LIGHT['lightLevel'], ll1))
+    gr.add((ll1, LIGHT['light'],
+          Namespace("http://projects.bigasterisk.com/room/lights/")['couchleft']))
+    gr.add((ll1, LIGHT['to'], Literal("0")))
+
+    ll2 = BNode()
+    gr.add((LIGHT['dark'], LIGHT['lightLevel'], ll2))
+    gr.add((ll2, LIGHT['light'],
+          Namespace("http://projects.bigasterisk.com/room/lights/")['couchright']))
+    gr.add((ll2, LIGHT['to'], Literal("0")))
+
+    print gr.serialize(format="nt")
+    
 
 class NoteCode:
     def __init__(self):
         self.phrase = []
         self.last_note_time = 0
         self.connect()
-        
+
     def connect(self):
         self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
                               socket.getservbyname("lights","tcp"))
-        
 
     def event(self,ev):
         if ev.data.__class__ != amidi.MidiEvent.NoteOn:
@@ -37,27 +80,37 @@ class NoteCode:
     def set_lights(self, lev, names):
         for n in names:
             try:
+                print n,"to",lev
                 self.light_server.setLight(n,lev)
             except xmlrpclib.Fault, e:
                 print e, "on command setLight(%r,%r)" % (n,lev)
                 self.connect()
 
     def action(self, phrase):
-        all = ['drewdesk', 'couchleft', 'couchright', 'dining']
-        if phrase == [60, 65]: # C F
-            self.set_lights(1, all)
-        elif phrase == [60, 63]: # C Eb
-            self.set_lights(.6, all)
-        elif phrase == [67, 60]: # G C
-            self.set_lights(0, all+['projector', 'deskhalo'])
-        else:
-            return False
-        return True
+
+        gr = Graph()
+        gr.load("midicodes.n3", format="nt")
+        phrase_literal = Literal(" ".join(map(str, phrase)))
+        matched = False
+        for cmd in gr.subjects(MIDI['notes'], phrase_literal):
+            for effect in gr.objects(cmd, LIGHT['triggers']):
+                print "phrase %r triggers %s" % (str(phrase_literal),effect)
+                
+                for lightLevel in gr.objects(effect, LIGHT['lightLevel']):
+                    light_ns = Namespace("http://projects.bigasterisk.com/room/lights/")
+                    lightname = str(gr.value(lightLevel, LIGHT['light']))[len(light_ns):]
+                    try:
+                        lev = float(gr.value(lightLevel, LIGHT['to']))
+                    except TypeError:
+                        print "failed to parse level %r in node %r" % (gr.value(lightLevel, LIGHT['to']), lightLevel)
+                    else:
+                        self.set_lights(lev, [lightname])
+
+                    matched = True
+        return matched
 
 seq = amidi.Sequencer('Test Sequencer')
 inp = seq.create_midiin('Test Midi In')
-
-nc = NoteCode()
 
 outp = seq.create_midiout('Test Midi Out')
 queue = seq.create_queue()
@@ -69,6 +122,8 @@ queue.start()
 # need to modify this line:
 os.system('aconnect -t %d 64:0 %d:%d' % (queue.id, seq.id, inp.id))
 os.system('aconnect -t %d %d:%d 64:0' % (queue.id, seq.id, outp.id))
+
+nc = NoteCode()
 
 while 1:
     a, _, _ = select.select([inp], [], [], .1)

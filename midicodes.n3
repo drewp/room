@@ -1,0 +1,54 @@
+<http://projects.bigasterisk.com/room/cmd1> <http://projects.bigasterisk.com/midi/notes> "67 60".
+<http://projects.bigasterisk.com/room/cmd1> <http://projects.bigasterisk.com/midi/noteletters> "G C".
+<http://projects.bigasterisk.com/room/cmd1> <http://projects.bigasterisk.com/room/triggers> <http://projects.bigasterisk.com/room/dark>.
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll1.
+_:ll1 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchleft>.
+_:ll1 <http://projects.bigasterisk.com/room/to> "0".
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll2.
+_:ll2 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchright>.
+_:ll2 <http://projects.bigasterisk.com/room/to> "0".
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll3.
+_:ll3 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/dining>.
+_:ll3 <http://projects.bigasterisk.com/room/to> "0".
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll4.
+_:ll4 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/drewdesk>.
+_:ll4 <http://projects.bigasterisk.com/room/to> "0".
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll5.
+_:ll5 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/projector>.
+_:ll5 <http://projects.bigasterisk.com/room/to> "0".
+<http://projects.bigasterisk.com/room/dark> <http://projects.bigasterisk.com/room/lightLevel> _:ll6.
+_:ll6 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/deskhalo>.
+_:ll6 <http://projects.bigasterisk.com/room/to> "0".
+
+<http://projects.bigasterisk.com/room/cmd2> <http://projects.bigasterisk.com/midi/notes> "60 65".
+<http://projects.bigasterisk.com/room/cmd2> <http://projects.bigasterisk.com/midi/noteletters> "C F".
+<http://projects.bigasterisk.com/room/cmd2> <http://projects.bigasterisk.com/room/triggers> <http://projects.bigasterisk.com/room/bright>.
+<http://projects.bigasterisk.com/room/bright> <http://projects.bigasterisk.com/room/lightLevel> _:ll7.
+_:ll7 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchleft>.
+_:ll7 <http://projects.bigasterisk.com/room/to> "1".
+<http://projects.bigasterisk.com/room/bright> <http://projects.bigasterisk.com/room/lightLevel> _:ll8.
+_:ll8 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchright>.
+_:ll8 <http://projects.bigasterisk.com/room/to> "1".
+<http://projects.bigasterisk.com/room/bright> <http://projects.bigasterisk.com/room/lightLevel> _:ll9.
+_:ll9 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/dining>.
+_:ll9 <http://projects.bigasterisk.com/room/to> "1".
+<http://projects.bigasterisk.com/room/bright> <http://projects.bigasterisk.com/room/lightLevel> _:ll10.
+_:ll10 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/drewdesk>.
+_:ll10 <http://projects.bigasterisk.com/room/to> "1".
+
+<http://projects.bigasterisk.com/room/cmd3> <http://projects.bigasterisk.com/midi/notes> "60 63".
+<http://projects.bigasterisk.com/room/cmd3> <http://projects.bigasterisk.com/midi/noteletters> "C Eb".
+<http://projects.bigasterisk.com/room/cmd3> <http://projects.bigasterisk.com/room/triggers> <http://projects.bigasterisk.com/room/halfbright>.
+<http://projects.bigasterisk.com/room/halfbright> <http://projects.bigasterisk.com/room/lightLevel> _:ll11.
+_:ll11 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchleft>.
+_:ll11 <http://projects.bigasterisk.com/room/to> ".6".
+<http://projects.bigasterisk.com/room/halfbright> <http://projects.bigasterisk.com/room/lightLevel> _:ll12.
+_:ll12 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/couchright>.
+_:ll12 <http://projects.bigasterisk.com/room/to> ".6".
+<http://projects.bigasterisk.com/room/halfbright> <http://projects.bigasterisk.com/room/lightLevel> _:ll13.
+_:ll13 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/dining>.
+_:ll13 <http://projects.bigasterisk.com/room/to> ".6".
+<http://projects.bigasterisk.com/room/halfbright> <http://projects.bigasterisk.com/room/lightLevel> _:ll14.
+_:ll14 <http://projects.bigasterisk.com/room/light> <http://projects.bigasterisk.com/room/lights/drewdesk>.
+_:ll14 <http://projects.bigasterisk.com/room/to> ".6".
+
