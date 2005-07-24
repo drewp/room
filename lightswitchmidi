@@ -1,26 +1,11 @@
 #!/usr/bin/python
 
+"""pyalsamidi at http://infohost.nmt.edu/~dbaird/software/
 
-# pyalsamidi at http://infohost.nmt.edu/~dbaird/software/
-
-# almost related: http://lists.w3.org/Archives/Public/www-archive/2001Nov/0033
-
-
-"""
 n3->rdf convertor at http://www.w3.org/DesignIssues/Notation3.html
 
-for n3 and querying, i should probably switch to librdf
-
-my original n3, which rdflib can't parse:
-
-@prefix : <http://projects.bigasterisk.com/room>.
-@prefix lights: <http://projects.bigasterisk.com/room/lights>.
-@prefix midi: <http://projects.bigasterisk.com/midi>.
-cmd1 midi:notes "60 65"; :triggers <dark>.
-<dark> :lightLevel [:light lights:couchleft; :to "0"], 
-                   [:light lights:couchright; :to "0"].
+almost related: http://lists.w3.org/Archives/Public/www-archive/2001Nov/0033
 """
-
 
 import os, select, time, xmlrpclib, socket
 from twisted.internet import reactor, tksupport, defer
@@ -33,7 +18,7 @@ class NoteCode:
         self.last_note_time = 0
         self.connect()
 
-        #self.action([67,60])
+        self.action([67,60])
 
     def connect(self):
         self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
@@ -49,27 +34,27 @@ class NoteCode:
 
         self.last_note_time = now
         self.phrase.append(ev.data.note)
-        
-        matched = self.action(self.phrase)
-        if matched:
-            self.phrase[:] = []
 
-    def set_lights(self, lev, names):
-        for n in names:
-            try:
-                print n,"to",lev
-                self.light_server.setLight(n,lev)
-            except xmlrpclib.Fault, e:
-                print e, "on command setLight(%r,%r)" % (n,lev)
-                self.connect()
+        try:
+            matched = self.action(self.phrase)
+            if matched:
+                self.phrase[:] = []
+        except Exception, e:
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
+            print e
 
-    def action(self, phrase):
-        prefixes = """
-            PREFIX midi: <http://projects.bigasterisk.com/midi/>
-            PREFIX room: <http://projects.bigasterisk.com/room/>
-        """
+    def set_light(self, name, lev):
+        try:
+            print name,"to",lev
+            self.light_server.setLight(name,lev)
+        except xmlrpclib.Fault, e:
+            print e, "on command setLight(%r,%r)" % (name,lev)
+            self.connect()
+
+    def load_model(self, filename="/my/proj/room/midicodes.n3"):
         model = RDF.Model(RDF.MemoryStorage())
-        u = RDF.Uri("file:/my/proj/room/midicodes.n3")
+        u = RDF.Uri("file:%s" % filename)
         try:
             for s in RDF.Parser('turtle').parse_as_stream(u):
                 model.add_statement(s)
@@ -77,25 +62,31 @@ class NoteCode:
             # e.__class__.__module__ is "RDF", not the real module!
             if e.__class__.__name__ != "RedlandError":
                 raise
-            print "Error parsing %s: %s" % (u, e)
-            return
+            raise ValueError("Error parsing %s: %s" % (u, e))
+        return model
+
+    def action(self, phrase):
+        model = self.load_model()
 
         phrase_literal = RDF.Node(" ".join(map(str, phrase)))
         phrase_quoted_literal = '"%s"' % phrase_literal #?
-        for res in RDF.SPARQLQuery('''
-            %s
-            SELECT ?action
-            WHERE {
-                [midi:notes %s; room:triggers ?action] .
-            }''' % (prefixes, phrase_quoted_literal)).execute(model):
+
+        prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
+                      PREFIX room: <http://projects.bigasterisk.com/room/>
+                      """
+
+        for res in RDF.SPARQLQuery(prefixes + '''
+                SELECT ?action
+                WHERE {
+                    [midi:notes %s; room:triggers ?action] .
+                }''' % phrase_quoted_literal).execute(model):
             print "running action %s" % res['action'].uri
 
-            for res in RDF.SPARQLQuery('''
-            %s
-            SELECT ?light ?level
-            WHERE {
-                <%s> room:lightLevel [room:light ?light; room:to ?level] .
-            }''' % (prefixes, res['action'].uri)).execute(model):
+            for res in RDF.SPARQLQuery(prefixes + '''
+                    SELECT ?light ?level
+                    WHERE {
+                     <%s> room:lightLevel [room:light ?light; room:to ?level] .
+                    }''' % res['action'].uri).execute(model):
                 self.do_lightlevel(res['light'].uri, res['level'])
 
     def do_lightlevel(self, light_uri, level):
@@ -107,7 +98,7 @@ class NoteCode:
         level = float(level.literal_value['string'])
 
         print "light %s to level %s" % (lightname, level)
-        self.set_lights(level, [lightname])
+        self.set_light(lightname, level)
             
 seq = amidi.Sequencer('Test Sequencer')
 inp = seq.create_midiin('Test Midi In')
