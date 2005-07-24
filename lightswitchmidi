@@ -24,39 +24,16 @@ cmd1 midi:notes "60 65"; :triggers <dark>.
 
 import os, select, time, xmlrpclib, socket
 from twisted.internet import reactor, tksupport, defer
-
-from rdflib import Graph, RDF, Literal, Namespace, BNode
-
 from pyalsamidi import pyalsamidi as amidi
-
-LIGHT = Namespace("http://projects.bigasterisk.com/room/")
-MIDI = Namespace("http://projects.bigasterisk.com/midi/")
-
-if 0:
-    # this created the n3 that rdflib can read
-    gr.add((LIGHT['cmd1'], MIDI['notes'], Literal('60 65')))
-    gr.add((LIGHT['cmd1'], LIGHT['triggers'], LIGHT['dark']))
-
-    ll1 = BNode()
-    gr.add((LIGHT['dark'], LIGHT['lightLevel'], ll1))
-    gr.add((ll1, LIGHT['light'],
-          Namespace("http://projects.bigasterisk.com/room/lights/")['couchleft']))
-    gr.add((ll1, LIGHT['to'], Literal("0")))
-
-    ll2 = BNode()
-    gr.add((LIGHT['dark'], LIGHT['lightLevel'], ll2))
-    gr.add((ll2, LIGHT['light'],
-          Namespace("http://projects.bigasterisk.com/room/lights/")['couchright']))
-    gr.add((ll2, LIGHT['to'], Literal("0")))
-
-    print gr.serialize(format="nt")
-    
+import RDF
 
 class NoteCode:
     def __init__(self):
         self.phrase = []
         self.last_note_time = 0
         self.connect()
+
+        #self.action([67,60])
 
     def connect(self):
         self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
@@ -87,28 +64,51 @@ class NoteCode:
                 self.connect()
 
     def action(self, phrase):
+        prefixes = """
+            PREFIX midi: <http://projects.bigasterisk.com/midi/>
+            PREFIX room: <http://projects.bigasterisk.com/room/>
+        """
+        model = RDF.Model(RDF.MemoryStorage())
+        u = RDF.Uri("file:/my/proj/room/midicodes.n3")
+        try:
+            for s in RDF.Parser('turtle').parse_as_stream(u):
+                model.add_statement(s)
+        except (Exception, ), e:
+            # e.__class__.__module__ is "RDF", not the real module!
+            if e.__class__.__name__ != "RedlandError":
+                raise
+            print "Error parsing %s: %s" % (u, e)
+            return
 
-        gr = Graph()
-        gr.load("midicodes.n3", format="nt")
-        phrase_literal = Literal(" ".join(map(str, phrase)))
-        matched = False
-        for cmd in gr.subjects(MIDI['notes'], phrase_literal):
-            for effect in gr.objects(cmd, LIGHT['triggers']):
-                print "phrase %r triggers %s" % (str(phrase_literal),effect)
-                
-                for lightLevel in gr.objects(effect, LIGHT['lightLevel']):
-                    light_ns = Namespace("http://projects.bigasterisk.com/room/lights/")
-                    lightname = str(gr.value(lightLevel, LIGHT['light']))[len(light_ns):]
-                    try:
-                        lev = float(gr.value(lightLevel, LIGHT['to']))
-                    except TypeError:
-                        print "failed to parse level %r in node %r" % (gr.value(lightLevel, LIGHT['to']), lightLevel)
-                    else:
-                        self.set_lights(lev, [lightname])
+        phrase_literal = RDF.Node(" ".join(map(str, phrase)))
+        phrase_quoted_literal = '"%s"' % phrase_literal #?
+        for res in RDF.SPARQLQuery('''
+            %s
+            SELECT ?action
+            WHERE {
+                [midi:notes %s; room:triggers ?action] .
+            }''' % (prefixes, phrase_quoted_literal)).execute(model):
+            print "running action %s" % res['action'].uri
 
-                    matched = True
-        return matched
+            for res in RDF.SPARQLQuery('''
+            %s
+            SELECT ?light ?level
+            WHERE {
+                <%s> room:lightLevel [room:light ?light; room:to ?level] .
+            }''' % (prefixes, res['action'].uri)).execute(model):
+                self.do_lightlevel(res['light'].uri, res['level'])
 
+    def do_lightlevel(self, light_uri, level):
+        prefix = "http://projects.bigasterisk.com/room/lights/"
+        lightname = str(light_uri)[len(prefix):]
+
+        assert (level.literal_value['datatype'] ==
+                RDF.Uri("http://www.w3.org/2001/XMLSchema#float"))
+        level = float(level.literal_value['string'])
+
+        print "light %s to level %s" % (lightname, level)
+        self.set_lights(level, [lightname])
+            
 seq = amidi.Sequencer('Test Sequencer')
 inp = seq.create_midiin('Test Midi In')
 
