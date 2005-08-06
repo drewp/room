@@ -48,7 +48,7 @@ class light(device.device):
                 newlevel = 1
             self.level = newlevel
 
-            self.tclevel = self.tc.evallevel(newlevel) # do transfer curve
+            self.tclevel = self.tc.evallevel(newlevel)
 
             if testmode:
                 log.debug('testmode: light changelevel to %f' % newlevel)
