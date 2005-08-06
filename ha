@@ -4,33 +4,16 @@ from k8000 import *
 import socket
 import lights_server
 import device
-from light import *
+from light import k8000_dimmed, k8000_nd, Rainbow
 from volume import Volume
 from sys import stdout
 import logging
 import time
 import SocketServer,thread,socket
+from logsetup import commonlogsetup
 
 from twisted.web import xmlrpc, server
 from twisted.internet import reactor
-
-def commonlogsetup(excludechannels=[]):
-    """sets up logs how i usually like them, with a custom filter to
-    exclude the given channel names. log level is DEBUG. return value
-    is the top-level logger"""
-    if isinstance(excludechannels,(str,unicode)):
-        excludechannels=[excludechannels]
-    class myfilter(logging.Filter):
-        def filter(self,record,excludechannels=excludechannels):
-            return record.name not in excludechannels
-    log=logging.getLogger()
-    log.setLevel(logging.DEBUG)
-
-    for h in logging.StreamHandler(), logging.FileHandler("log"):
-        h.setFormatter(logging.Formatter("%(created)s %(asctime)s %(levelname)-5s %(filename)s:%(lineno)d: %(message)s"))
-        h.addFilter(myfilter())
-        log.addHandler(h)
-    return log
 
 log=commonlogsetup()
 
@@ -77,8 +60,8 @@ digi = dict(
     switches2=11,
     switches3=12,
     deskhalo=13,
-    screenmotor0=14,
-    screenmotor1=15,
+    screenmotorup=14,
+    screenmotordown=15,
     projector=16,
     )
     
@@ -88,8 +71,6 @@ lights = [
            k8000_dimmed('couchright',6),
            k8000_dimmed('dining',5),
            k8000_nd('deskhalo',digi['deskhalo']),
-           k8000_nd('screenmotor0',digi['screenmotor0']),
-           k8000_nd('screenmotor1',digi['screenmotor1']),
            k8000_nd('projector',digi['projector']),
 #           Rainbow('rainbow1',0),
 #           Rainbow('rainbow2',1)
@@ -320,18 +301,98 @@ class task_screenmotor(Task):
     def __init__(self):
         self.oldsens = False
         self.pos = 0
+        self.state = "stopped"
+
+        self.top = 0
+        self.bottom = 142
+        
+        self.output = dict([(n[len("screenmotor"):], k8000_nd(n, digi[n]))
+                            for n in 'screenmotorup', 'screenmotordown'])
+
+        self.stop()
+
+        reactor.addSystemEventTrigger("before", "shutdown", self.stop)
+        
     def step(self):
         sens = not ReadIOchannel(digi['screenpos'])
-        
+
         if sens != self.oldsens:
-            if getlightbyname("screenmotor0").getlevel():
-                self.pos += 1
-            if getlightbyname("screenmotor1").getlevel():
+            if self.output['up'].getlevel():
                 self.pos -= 1
+            if self.output['down'].getlevel():
+                self.pos += 1
+
+            if self.state == "nudge":
+                self.stop()
             
             log.info("screenmotor position %s" % self.pos)
             self.oldsens = sens
+
+        if self.state == "moving":
+            if self.stop_test(self.pos):
+                self.stop()
+
         return 1
+
+    def _getFunction(self, functionPath):
+        """from xmlrpc.XMLRPC interface"""
+
+        if not functionPath.startswith("_") and functionPath != "step":
+            try:
+                return getattr(self, functionPath)
+            except AttributeError:
+                pass
+        raise xmlrpc.NoSuchFunction(8001,
+                                    "function %s not found" % functionPath)
+    
+    def down(self, _up=False):
+        extent, name = self.bottom, "bottom"
+        if _up:
+            extent, name = self.top, "top"
+            
+        if extent is None:
+            raise xmlrpc.Fault(8002, "%s is not set- nudge to the %s and call "
+                               "set_%s() before calling this method" %
+                               (name, name, name))
+        
+        if _up:
+            self.output['up'].setlevel(1)
+            self.stop_test = lambda pos: pos <= self.top
+        else:
+            self.output['down'].setlevel(1)
+            self.stop_test = lambda pos: pos >= self.bottom
+
+        self.state = "moving"
+        
+        return "ok"
+
+    def up(self):
+        return self.down(_up=True)
+    
+    def stop(self):
+        self.output['up'].setlevel(0)
+        self.output['down'].setlevel(0)
+        self.state = "stopped"
+        return "ok"
+        
+    def set_top(self):
+        # should move bottom so top is always zero
+        self.top = self.pos
+        return "ok"
+    
+    def set_bottom(self):
+        self.bottom = self.pos
+        return "ok"
+    
+    def nudge_up(self, _dir="up"):
+        self.output[_dir].setlevel(1)
+        self.state = "nudge"
+        self.lastpos = self.pos
+        return 'ok'
+    
+    def nudge_down(self):
+        return self.nudge_up(_dir="down")
+        
 
 class ambient_light(Task):
     def __init__(self):
@@ -357,22 +418,24 @@ class ambient_light(Task):
 
 vol = Volume()
 
-#task_wallswitches()
-#tasks = [ task_door() ]
 tasks = []
 
 phonetask = task_phone()
 tasks.append(phonetask)
-tasks.append(task_door())
+#tasks.append(task_door())
 tasks.append(task_pager())
 tasks.append(task_vol_slider())
-tasks.append(task_screenmotor())
+screenmotor = task_screenmotor()
+tasks.append(screenmotor)
 tasks.append(ambient_light())
 
 class LightsServer(xmlrpc.XMLRPC):
     def xmlrpc_getLight(self,lightname):
         l = getlightbyname(lightname)
+        if l is None:
+           raise ValueError("light %r not found" % lightname)
         return float(l.getlevel())
+    
     def xmlrpc_setLight(self,lightname,level):
         level = float(level)
         l = getlightbyname(lightname)
@@ -380,8 +443,12 @@ class LightsServer(xmlrpc.XMLRPC):
         return level
     def xmlrpc_listLights(self):
         return [l.getname() for l in lights]
+
+xmlrpcserv = LightsServer()
 reactor.listenTCP(socket.getservbyname('lights','tcp'),
-                  server.Site(LightsServer()))
+                  server.Site(xmlrpcserv))
+
+xmlrpcserv.putSubHandler("screen",screenmotor)
         
 
 debug=0
