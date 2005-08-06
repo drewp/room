@@ -10,6 +10,7 @@
 		  [:light lights:drewdesk; :to "0"^^xs:float],
 		  [:light lights:projector; :to "0"^^xs:float],
 		  [:light lights:deskhalo; :to "0"^^xs:float] .
+:dark :execute "/home/drewp/bin/dark".
 
 [midi:notes "60 65"; midi:noteletters "C F"; :triggers :bright] .
 :bright :lightLevel [:light lights:couchleft; :to "1"^^xs:float], 
@@ -22,3 +23,7 @@
 	                [:light lights:couchright; :to "0.6"^^xs:float],
 			[:light lights:dining; :to "0.6"^^xs:float],
 			[:light lights:drewdesk; :to "0.6"^^xs:float] .
+
+[midi:notes "65 67 65"; midi:noteletters "F G F"; :triggers :saytime] .
+:saytime :execute "cd /my/dl/dl/saytime-1.0; ./saytime" .
+
