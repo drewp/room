@@ -65,14 +65,29 @@ class Slider(tk.Frame):
         reactor.callLater(1,self.getLightLoop)
         
 
+class Screen(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master, bd=2, relief='raised')
+        tk.Label(self, text="Screen control:").pack(side='left')
+        for n in "down up stop set_top set_bottom nudge_up nudge_down".split():
+            b = tk.Button(self, text=n,
+                          command=lambda n=n: lightCall("screen.%s" % n))
+            b.pack(side='left')
+            
+
 parser = OptionParser()
 options,args = parser.parse_args()
 
 root=tk.Tk()
 
+
+Screen(root).pack(side='top')
+sliders = tk.Frame()
+sliders.pack(side='top')
+
 def setupSliders(lightnames):
     for lightname in lightnames:
-        e = Slider(root,lightname)
+        e = Slider(sliders,lightname)
         e.pack(side='left')
 
 lightCall("listLights").addCallback(setupSliders)
