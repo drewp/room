@@ -10,12 +10,17 @@ almost related: http://lists.w3.org/Archives/Public/www-archive/2001Nov/0033
 import os, select, time, xmlrpclib, socket
 from twisted.internet import reactor, tksupport, defer
 from pyalsamidi import pyalsamidi as amidi
+from logsetup import commonlogsetup
 import RDF
+
+log = commonlogsetup(filename=None)
+
 
 class NoteCode:
     def __init__(self):
         self.phrase = []
         self.last_note_time = 0
+        self.max_pause_time = .5 # sec
         self.connect()
 
         self.action([67,60])
@@ -29,7 +34,7 @@ class NoteCode:
             return
 
         now = time.time()
-        if now - self.last_note_time > .5:
+        if now - self.last_note_time > self.max_pause_time:
             self.phrase[:] = []
 
         self.last_note_time = now
@@ -42,14 +47,14 @@ class NoteCode:
         except Exception, e:
             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 raise
-            print e
+            log.error(e)
 
     def set_light(self, name, lev):
         try:
-            print name,"to",lev
+            log.info("%s to %s" % (name,lev))
             self.light_server.setLight(name,lev)
         except xmlrpclib.Fault, e:
-            print e, "on command setLight(%r,%r)" % (name,lev)
+            log.error("%s on command setLight(%r,%r)" % (e, name, lev))
             self.connect()
 
     def load_model(self, filename="/my/proj/room/midicodes.n3"):
@@ -70,6 +75,7 @@ class NoteCode:
 
         phrase_literal = RDF.Node(" ".join(map(str, phrase)))
         phrase_quoted_literal = '"%s"' % phrase_literal #?
+        log.info("checking phrase %s" % phrase_quoted_literal)
 
         prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
                       PREFIX room: <http://projects.bigasterisk.com/room/>
@@ -80,15 +86,26 @@ class NoteCode:
                 WHERE {
                     [midi:notes %s; room:triggers ?action] .
                 }''' % phrase_quoted_literal).execute(model):
-            print "running action %s" % res['action'].uri
+            action = res['action'].uri
+            log.info("running action %s" % action)
 
             for res in RDF.SPARQLQuery(prefixes + '''
                     SELECT ?light ?level
                     WHERE {
                      <%s> room:lightLevel [room:light ?light; room:to ?level] .
-                    }''' % res['action'].uri).execute(model):
+                    }''' % action).execute(model):
                 self.do_lightlevel(res['light'].uri, res['level'])
 
+            for res in RDF.SPARQLQuery(prefixes + '''
+                    SELECT ?command
+                    WHERE {
+                        <%s> room:execute ?command.
+                    }''' % action).execute(model):
+                log.info("running %s" % str(res['command']))
+                ret = os.system(str(res['command']))
+                if ret != 0:
+                    log.error("command returned %d" % (ret >> 8))
+                    
     def do_lightlevel(self, light_uri, level):
         prefix = "http://projects.bigasterisk.com/room/lights/"
         lightname = str(light_uri)[len(prefix):]
@@ -97,7 +114,7 @@ class NoteCode:
                 RDF.Uri("http://www.w3.org/2001/XMLSchema#float"))
         level = float(level.literal_value['string'])
 
-        print "light %s to level %s" % (lightname, level)
+        log.info("light %s to level %s" % (lightname, level))
         self.set_light(lightname, level)
             
 seq = amidi.Sequencer('Test Sequencer')
