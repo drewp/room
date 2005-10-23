@@ -27,3 +27,11 @@
 [midi:notes "65 67 65"; midi:noteletters "F G F"; :triggers :saytime] .
 :saytime :execute "cd /my/dl/dl/saytime-1.0; ./saytime" .
 
+[<http://projects.bigasterisk.com/room/ir/command> "power"; :triggers :projectorTogglePower] .
+
+[<http://projects.bigasterisk.com/room/ir/command> "volumeup"; :triggers :volumeUp] .
+:volumeUp :execute "rexima pcm +2".
+
+[<http://projects.bigasterisk.com/room/ir/command> "volumedown"; :triggers :volumeDown] .
+:volumeDown :execute "rexima pcm -2".
+

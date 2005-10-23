@@ -1,0 +1,39 @@
+#!/usr/local/bin/python
+
+""" run lircd, don't bother with .lircrc, and then run this. lircd
+commands will be used as room/ir/command actions"""
+
+from logsetup import commonlogsetup
+from twisted.internet import reactor, tksupport, defer, protocol
+from twisted.protocols.basic import LineReceiver
+from rdfaction import RoomAction
+log = commonlogsetup(filename=None)
+
+room_action = RoomAction()
+
+class LircClient(LineReceiver):
+    delimiter = "\n"
+    def __init__(self):
+        self.lastKey = None
+        self.lastRep = None
+
+        self.repeatingKeys = "volumedown volumeup".split()
+        
+    def lineReceived(self, line):
+        hexcode, rep, key, device = line.split()
+        rep = int(rep, 16)
+
+        repeat = False
+        if key == self.lastKey and rep > self.lastRep:
+            repeat = True
+
+        self.lastKey, self.lastRep = key, rep
+
+        if repeat and key not in self.repeatingKeys:
+            return
+        
+        room_action.fire("<http://projects.bigasterisk.com/room/ir/command>",
+                         '"%s"' % key)
+    
+protocol.ClientCreator(reactor, LircClient).connectUNIX("/dev/lircd")
+reactor.run()
