@@ -5,6 +5,15 @@
 n3->rdf convertor at http://www.w3.org/DesignIssues/Notation3.html
 
 almost related: http://lists.w3.org/Archives/Public/www-archive/2001Nov/0033
+
+cd soundfont
+fluidsynth
+prog 0 86
+
+alsa-patch-bay
+
+
+
 """
 
 import os, select, time, xmlrpclib, socket
@@ -12,22 +21,19 @@ from twisted.internet import reactor, tksupport, defer
 from pyalsamidi import pyalsamidi as amidi
 from logsetup import commonlogsetup
 import RDF
+from rdfaction import RoomAction
 
 log = commonlogsetup(filename=None)
-
 
 class NoteCode:
     def __init__(self):
         self.phrase = []
         self.last_note_time = 0
         self.max_pause_time = .5 # sec
-        self.connect()
 
-        self.action([67,60])
+        self.room_action = RoomAction()
 
-    def connect(self):
-        self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
-                              socket.getservbyname("lights","tcp"))
+        self.action([60,65]) # tester
 
     def event(self,ev):
         if ev.data.__class__ != amidi.MidiEvent.NoteOn:
@@ -49,74 +55,16 @@ class NoteCode:
                 raise
             log.error(e)
 
-    def set_light(self, name, lev):
-        try:
-            log.info("%s to %s" % (name,lev))
-            self.light_server.setLight(name,lev)
-        except xmlrpclib.Fault, e:
-            log.error("%s on command setLight(%r,%r)" % (e, name, lev))
-            self.connect()
-
-    def load_model(self, filename="/my/proj/room/midicodes.n3"):
-        model = RDF.Model(RDF.MemoryStorage())
-        u = RDF.Uri("file:%s" % filename)
-        try:
-            for s in RDF.Parser('turtle').parse_as_stream(u):
-                model.add_statement(s)
-        except (Exception, ), e:
-            # e.__class__.__module__ is "RDF", not the real module!
-            if e.__class__.__name__ != "RedlandError":
-                raise
-            raise ValueError("Error parsing %s: %s" % (u, e))
-        return model
 
     def action(self, phrase):
-        model = self.load_model()
-
         phrase_literal = RDF.Node(" ".join(map(str, phrase)))
         phrase_quoted_literal = '"%s"' % phrase_literal #?
         log.info("checking phrase %s" % phrase_quoted_literal)
 
-        prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
-                      PREFIX room: <http://projects.bigasterisk.com/room/>
-                      """
-
-        for res in RDF.SPARQLQuery(prefixes + '''
-                SELECT ?action
-                WHERE {
-                    [midi:notes %s; room:triggers ?action] .
-                }''' % phrase_quoted_literal).execute(model):
-            action = res['action'].uri
-            log.info("running action %s" % action)
-
-            for res in RDF.SPARQLQuery(prefixes + '''
-                    SELECT ?light ?level
-                    WHERE {
-                     <%s> room:lightLevel [room:light ?light; room:to ?level] .
-                    }''' % action).execute(model):
-                self.do_lightlevel(res['light'].uri, res['level'])
-
-            for res in RDF.SPARQLQuery(prefixes + '''
-                    SELECT ?command
-                    WHERE {
-                        <%s> room:execute ?command.
-                    }''' % action).execute(model):
-                log.info("running %s" % str(res['command']))
-                ret = os.system(str(res['command']))
-                if ret != 0:
-                    log.error("command returned %d" % (ret >> 8))
-                    
-    def do_lightlevel(self, light_uri, level):
-        prefix = "http://projects.bigasterisk.com/room/lights/"
-        lightname = str(light_uri)[len(prefix):]
-
-        assert (level.literal_value['datatype'] ==
-                RDF.Uri("http://www.w3.org/2001/XMLSchema#float"))
-        level = float(level.literal_value['string'])
-
-        log.info("light %s to level %s" % (lightname, level))
-        self.set_light(lightname, level)
-            
+        return self.room_action.fire(
+            "midi:notes",#"<http:/projects.bigasterisk.com/midi/notes>",
+            phrase_quoted_literal)
+        
 seq = amidi.Sequencer('Test Sequencer')
 inp = seq.create_midiin('Test Midi In')
 
