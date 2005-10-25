@@ -2,6 +2,7 @@
 @prefix lights: <http://projects.bigasterisk.com/room/lights/>.
 @prefix midi: <http://projects.bigasterisk.com/midi/>.
 @prefix xs:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix ir: <http://projects.bigasterisk.com/room/ir/> .
 
 [midi:notes "67 60"; midi:noteletters "G C"; :triggers :dark] .
 :dark :lightLevel [:light lights:couchleft; :to "0"^^xs:float],
@@ -27,11 +28,39 @@
 [midi:notes "65 67 65"; midi:noteletters "F G F"; :triggers :saytime] .
 :saytime :execute "cd /my/dl/dl/saytime-1.0; ./saytime" .
 
-[<http://projects.bigasterisk.com/room/ir/command> "power"; :triggers :projectorTogglePower] .
+[ir:command "power"; :triggers :dark] .
+[ir:command "chanup"; :triggers :screenUp] .
+[ir:command "chandown"; :triggers :screenDown] .
+[ir:command "rec"] .
+[ir:command "vtrtv"; :triggers :projLights] .
+[ir:command "play"; :triggers :projOn] .
+[ir:command "stop"; :triggers :couchOff] .
+[ir:command "pause"] .
+[ir:command "fadv"] .
+[ir:command "rew"; :triggers :bright] .
+[ir:command "ffwd"; :triggers :screenStop] .
+[ir:command "slow"] .
+[ir:command "repeat"] .
+[ir:command "aux"] .
+[ir:command "0..9"] .
 
-[<http://projects.bigasterisk.com/room/ir/command> "volumeup"; :triggers :volumeUp] .
+:projLights :lightLevel [:light lights:couchleft; :to "0"^^xs:float],
+	                [:light lights:couchright; :to "0"^^xs:float],
+			[:light lights:dining; :to "0.4"^^xs:float],
+			[:light lights:drewdesk; :to "0.4"^^xs:float] .
+
+:couchOff :lightLevel [:light lights:couchleft; :to "0"^^xs:float],
+                      [:light lights:couchright; :to "0"^^xs:float].
+
+:projOn :lightLevel [:light lights:projector; :to "1"^^xs:float].
+
+:screenUp :lightCommand "screen.up".
+:screenDown :lightCommand "screen.down".
+:screenStop :lightCommand "screen.stop".
+
+[ir:command "volumeup"; :triggers :volumeUp] .
 :volumeUp :execute "rexima pcm +2".
 
-[<http://projects.bigasterisk.com/room/ir/command> "volumedown"; :triggers :volumeDown] .
+[ir:command "volumedown"; :triggers :volumeDown] .
 :volumeDown :execute "rexima pcm -2".
 
