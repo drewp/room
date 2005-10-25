@@ -30,11 +30,14 @@ class RoomAction:
 
     def fire(self, pred, obj):
         """
-
         fire actions with given pred/obj (both must be quoted n3)
         
         """
-        self.load_rdf()
+        try:
+            self.load_rdf()
+        except ValueError:
+            log.debug("cannot search for actions")
+            return
         
         model = self.model
         prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
@@ -47,6 +50,7 @@ class RoomAction:
                 WHERE {
                     [%s %s; room:triggers ?action] .
                 }''' % (pred,obj)).execute(model):
+
             action = res['action'].uri
             matches = matches + 1
             log.info("running action %s" % action)
@@ -57,6 +61,13 @@ class RoomAction:
                      <%s> room:lightLevel [room:light ?light; room:to ?level] .
                     }''' % action).execute(model):
                 self.do_lightlevel(res['light'].uri, res['level'])
+
+            for res in RDF.SPARQLQuery(prefixes + '''
+                    SELECT ?command
+                    WHERE {
+                     <%s> room:lightCommand ?command .
+                    }''' % action).execute(model):
+                self.light_cmd(res['command'])
 
             for res in RDF.SPARQLQuery(prefixes + '''
                     SELECT ?command
@@ -83,9 +94,13 @@ class RoomAction:
         self.set_light(lightname, level)
             
     def set_light(self, name, lev):
+        log.info("%s to %s" % (name,lev))
+        self.light_cmd("setLight", name, lev)
+    
+    def light_cmd(self, method, *args):
         try:
-            log.info("%s to %s" % (name,lev))
-            self.light_server.setLight(name,lev)
+            getattr(self.light_server, str(method))(*args)
         except xmlrpclib.Fault, e:
-            log.error("%s on command setLight(%r,%r)" % (e, name, lev))
+            log.error("%s on command %s%r" % (e, method, tuple(args)))
             self.connect_light()
+        
