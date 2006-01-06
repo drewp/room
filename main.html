@@ -1,0 +1,72 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" 
+      xmlns:n="http://nevow.com/ns/nevow/0.1">
+<head>
+<style>
+  .sliderInput {
+        height:20;
+    width:30;
+        font-family : Arial, Helvetica, sans-serif;
+        font-size : 12px;
+  }
+</style>
+
+<script type="text/javascript" src="blueshoes/lib/LibCrossBrowser.js"></script>
+<script type="text/javascript" src="blueshoes/lib/EventHandler.js"></script>
+<script type="text/javascript" src="blueshoes/core/form/Bs_FormUtil.lib.js"></script>
+<script type="text/javascript" src="blueshoes/components/slider/Bs_Slider.class.js"></script>
+<script><!--
+
+function init(){
+  var light = new Object;
+
+  var lights = new Array('drewdesk', 'deskhalo');
+
+  for (var i = 0; i < lights.length; i++) {
+    var lightName = lights[i];
+
+    s = new Bs_Slider();
+    s.attachOnChange(bsSliderChange);
+    s.fieldName     = lightName;
+    s.width         = 49;
+    s.height        = 15;
+    s.minVal        = 0;
+    s.maxVal        = 1;
+    s.valueDefault  = 0;
+    s.valueInterval = 0.15;
+    s.imgDir = 'blueshoes/components/slider/img/';
+    s.setBackgroundImage('increase/bg.gif', 'no-repeat');
+    s.setSliderIcon('increase/knob.gif', 10, 21);
+    s.useInputField = 0;
+    s.draw(lightName);
+    light[lightName] = s;
+  }
+}
+
+function bsSliderChange(sliderObj, val, newPos){ 
+  server.handle('sliderChange', sliderObj.fieldName, val);
+}
+// --></script>
+<n:invisible n:render="liveglue" />
+</head>
+<body bgcolor="gray" onLoad="init();">
+
+<table border=1 cellpadding=10 bgcolor="lightgray"><tr><td>
+<div id="drewdesk" />
+<br>&nbsp;<br>
+desk light
+</td></tr></table>
+
+<table border=1 cellpadding=10 bgcolor="lightgray"><tr><td>
+<div id="deskhalo" />
+<br>&nbsp;<br>
+deskhalo
+</td></tr></table>
+
+<p>
+
+answer: <div id="answer-inputs"/>.
+
+<small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+from twisted.internet import reactor
+from twisted.application import internet, service
+from nevow import appserver
+from nevow import loaders, rend, static, livepage, tags as T
+
+from rdflib.sparql.sparqlGraph import SPARQLGraph as Graph
+from rdflib import URIRef, Literal, BNode, Namespace, FileInputSource
+from rdflib import RDF, RDFS
+
+import rdfaction
+
+class MainPage(livepage.LivePage):
+    docFactory = loaders.htmlfile("main.html")
+    addSlash = True
+    
+    def childFactory(self, ctx, name):
+        if name in ['blueshoes']:
+            return static.File(name)
+        
+    def handle_sliderChange(self, jsContext, lightName, level):
+        level = float(level)
+        print "set", lightName, level
+
+        reactor.callLater(0, roomAction.set_light, lightName, level)
+
+        client = livepage.IClientHandle(jsContext)
+        client.send(livepage.js.deskslider.setValue(.2))
+        client.set("answer-inputs", "val %s" % level)
+        client.alert('test')
+        
+
+roomAction = rdfaction.RoomAction()
+
+
+application = service.Application('room')
+webServer = internet.TCPServer(8082, appserver.NevowSite(MainPage()))
+webServer.setServiceParent(application)
