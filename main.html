@@ -1,72 +1,45 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" 
       xmlns:n="http://nevow.com/ns/nevow/0.1">
-<head>
-<style>
+  <head>
+    <style>
   .sliderInput {
         height:20;
     width:30;
         font-family : Arial, Helvetica, sans-serif;
         font-size : 12px;
   }
-</style>
+    </style>
 
-<script type="text/javascript" src="blueshoes/lib/LibCrossBrowser.js"></script>
-<script type="text/javascript" src="blueshoes/lib/EventHandler.js"></script>
-<script type="text/javascript" src="blueshoes/core/form/Bs_FormUtil.lib.js"></script>
-<script type="text/javascript" src="blueshoes/components/slider/Bs_Slider.class.js"></script>
-<script><!--
-
-function init(){
-  var light = new Object;
-
-  var lights = new Array('drewdesk', 'deskhalo', 'couchleft', 'couchright', 'dining');
-
-  for (var i = 0; i < lights.length; i++) {
-    var lightName = lights[i];
-
-    var s = new Bs_Slider();
-    s.attachOnChange(bsSliderChange);
-    s.fieldName     = lightName;
-    s.width         = 49;
-    s.height        = 15;
-    s.minVal        = 0;
-    s.maxVal        = 1;
-    s.valueDefault  = 0;
-    s.valueInterval = 0.15;
-    s.imgDir = 'blueshoes/components/slider/img/';
-    s.setBackgroundImage('increase/bg.gif', 'no-repeat');
-    s.setSliderIcon('increase/knob.gif', 10, 21);
-    s.useInputField = 0;
-    s.draw(lightName);
-    light[lightName] = s;
-  }
-}
+    <script type="text/javascript" src="blueshoes/lib/LibCrossBrowser.js"></script>
+    <script type="text/javascript" src="blueshoes/lib/EventHandler.js"></script>
+    <script type="text/javascript" src="blueshoes/core/form/Bs_FormUtil.lib.js"></script>
+    <script type="text/javascript" src="blueshoes/components/slider/Bs_Slider.class.js"></script>
+    <script><!--
 
 function bsSliderChange(sliderObj, val, newPos){ 
-  server.handle('sliderChange', sliderObj.fieldName, val);
+alert("silderchange");
+    server.handle('sliderChange', sliderObj.fieldName, val);
 }
+
+function setAnswer(self, foo) { 
+    Divmod.Runtime.theRuntime.setNodeContent(self.node, foo);
+}
+
 // --></script>
-<n:invisible n:render="liveglue" />
-</head>
-<body bgcolor="gray" onLoad="init();">
+    <n:invisible n:render="liveglue" />
+  </head>
+  <body bgcolor="gray">
 
-<div n:data="lightNames" n:render="sequence">
-  <table n:pattern="item" border="1" cellpadding="10" bgcolor="lightgray">
-    <tr>
-      <td>
-        <div><n:attr name="id" n:render="data" /></div>
-        <br/><br/>
-        <div n:render="data" />
-      </td>
-    </tr>
-  </table>
-</div>
+    <div n:data="lightNames" n:render="sequence">
+      <p n:pattern="item" n:render="slider" />
+    </div>
 
-<p/>
+    <p/>
 
-answer: <div id="answer"/>.
+    <div id="answer"/>.
 
-<small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
+    <small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
 
-</body>
+    <p>current source: <a href="/widgets.js">widgets.js</a> <a href="/main.html">main.html</a> <a href="/serve">serve</a></p>
+  </body>
 </html>
