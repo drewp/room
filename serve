@@ -1,3 +1,7 @@
+"""
+todo: alsa volumes, polyp routing, window without menu/status
+"""
+
 from twisted.internet import reactor
 from twisted.application import internet, service
 from nevow import appserver
@@ -8,16 +12,35 @@ from rdflib import URIRef, Literal, BNode, Namespace, FileInputSource
 from rdflib import RDF, RDFS
 
 import rdfaction
+livepage.DEBUG = True
 
 class MainPage(livepage.LivePage):
-    docFactory = loaders.htmlfile("main.html")
+    docFactory = loaders.xmlfile("main.html")
     addSlash = True
     
     def childFactory(self, ctx, name):
         if name in ['blueshoes']:
             return static.File(name)
+
+    def goingLive(self, ctx, client):
+        print "live", client
+        self.client = client
         
     def handle_sliderChange(self, jsContext, lightName, level):
+        client = livepage.IClientHandle(jsContext)
+        
+        print "i made", client, client.firstTime
+        client.set('answer', str(level))
+        return
+        return livepage.set('answer',str(level))
+    
+
+        j = livepage.js.deskslider.setValue(.2)
+        print "some js",j
+        client.send(j)
+
+    def extra():
+        
         level = float(level)
         print "set", lightName, level
 
@@ -26,11 +49,12 @@ class MainPage(livepage.LivePage):
         client = livepage.IClientHandle(jsContext)
         client.send(livepage.js.deskslider.setValue(.2))
         client.set("answer-inputs", "val %s" % level)
-        client.alert('test')
+        reactor.callLater(1, client.send, livepage.js.alert('test'))
         
+    def data_lightNames(self, ctx, data):
+        return ['drewdesk', 'deskhalo', 'couchleft', 'couchright', 'dining']
 
 roomAction = rdfaction.RoomAction()
-
 
 application = service.Application('room')
 webServer = internet.TCPServer(8082, appserver.NevowSite(MainPage()))

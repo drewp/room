@@ -19,12 +19,12 @@
 function init(){
   var light = new Object;
 
-  var lights = new Array('drewdesk', 'deskhalo');
+  var lights = new Array('drewdesk', 'deskhalo', 'couchleft', 'couchright', 'dining');
 
   for (var i = 0; i < lights.length; i++) {
     var lightName = lights[i];
 
-    s = new Bs_Slider();
+    var s = new Bs_Slider();
     s.attachOnChange(bsSliderChange);
     s.fieldName     = lightName;
     s.width         = 49;
@@ -50,21 +50,21 @@ function bsSliderChange(sliderObj, val, newPos){
 </head>
 <body bgcolor="gray" onLoad="init();">
 
-<table border=1 cellpadding=10 bgcolor="lightgray"><tr><td>
-<div id="drewdesk" />
-<br>&nbsp;<br>
-desk light
-</td></tr></table>
+<div n:data="lightNames" n:render="sequence">
+  <table n:pattern="item" border="1" cellpadding="10" bgcolor="lightgray">
+    <tr>
+      <td>
+        <div><n:attr name="id" n:render="data" /></div>
+        <br/><br/>
+        <div n:render="data" />
+      </td>
+    </tr>
+  </table>
+</div>
 
-<table border=1 cellpadding=10 bgcolor="lightgray"><tr><td>
-<div id="deskhalo" />
-<br>&nbsp;<br>
-deskhalo
-</td></tr></table>
+<p/>
 
-<p>
-
-answer: <div id="answer-inputs"/>.
+answer: <div id="answer"/>.
 
 <small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
 
