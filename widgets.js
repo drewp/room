@@ -23,7 +23,7 @@ RoomWidget.Slider.methods(
       s.minVal        = 0;
       s.maxVal        = 1;
       s.valueDefault  = 0;
-      s.valueInterval = 0.15;
+      s.valueInterval = 0.05;
       s.imgDir = 'blueshoes/components/slider/img/';
       s.setBackgroundImage('increase/bg.gif', 'no-repeat');
       s.setSliderIcon('increase/knob.gif', 10, 21);
@@ -38,3 +38,4 @@ RoomWidget.Slider.methods(
 function bsSliderChange(sliderObj, val, newPos){ 
     server.handle('sliderChange', sliderObj.fieldName, val);
 }
+

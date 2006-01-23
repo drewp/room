@@ -3,6 +3,7 @@
 @prefix midi: <http://projects.bigasterisk.com/midi/>.
 @prefix xs:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix ir: <http://projects.bigasterisk.com/room/ir/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 [midi:notes "67 60"; midi:noteletters "G C"; :triggers :dark] .
 :dark :lightLevel [:light lights:couchleft; :to "0"^^xs:float],
@@ -26,7 +27,8 @@
 			[:light lights:drewdesk; :to "0.6"^^xs:float] .
 
 [midi:notes "65 67 65"; midi:noteletters "F G F"; :triggers :saytime] .
-:saytime :execute "cd /my/dl/dl/saytime-1.0; ./saytime" .
+:saytime rdfs:Class :action; :execute "cd /my/dl/dl/saytime-1.0; ./saytime" .
+
 
 [ir:command "power"; :triggers :dark] .
 [ir:command "chanup"; :triggers :screenUp] .

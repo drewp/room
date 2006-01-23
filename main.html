@@ -36,10 +36,17 @@ function setAnswer(self, foo) {
 
     <p/>
 
-    <div id="answer"/>.
+    <div id="answer"/>
+
+    <div n:data="actions" n:render="sequence">
+       <div n:pattern="item" n:render="button"><n:slot name="uri" /></div>
+    </div>
 
     <small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
 
     <p>current source: <a href="/widgets.js">widgets.js</a> <a href="/main.html">main.html</a> <a href="/serve">serve</a></p>
+
+    <div n:render="introspection" />
+
   </body>
 </html>

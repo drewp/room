@@ -1,16 +1,21 @@
 """
 todo: alsa volumes, polyp routing, window without menu/status
 """
-import time
+import time, logging
 from twisted.python import util
 from twisted.internet import reactor, task
 from twisted.application import internet, service
 from nevow import appserver, inevow
 from nevow import loaders, rend, static, athena, tags as T
 
-from rdflib.sparql.sparqlGraph import SPARQLGraph as Graph
-from rdflib import URIRef, Literal, BNode, Namespace, FileInputSource
-from rdflib import RDF, RDFS
+import RDF
+
+from simple import Button
+
+
+logging.basicConfig()
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 import rdfaction
 
@@ -45,10 +50,17 @@ class Slider(athena.LiveFragment):
 
     def sliderChange(self, level):
         level = float(level)
-        print "set", self.lightName, level
         roomAction.set_light(self.lightName, level)
 
         #reactor.callLater(1, self.callRemote, 'setValue', 1)
+
+class ActionButton(Button):
+    def onClick(self):
+        ns = "http://projects.bigasterisk.com/room/"
+        if self.label in roomAction.action_uris():
+            roomAction.fire_action(RDF.Uri(self.label))
+        else:
+            print "unknown label", self.label
 
 class MainPage(athena.LivePage):
     docFactory = loaders.xmlfile("main.html")
@@ -56,7 +68,9 @@ class MainPage(athena.LivePage):
     
     def __init__(self, *a, **kw):
         super(MainPage, self).__init__(*a, **kw)
-        self.jsModules.mapping[u'RoomWidget'] = util.sibpath(__file__, 'widgets.js')
+        self.jsModules.mapping.update({
+            u'RoomWidget' : util.sibpath(__file__, 'widgets.js'),
+            u'SimpleWidget' : util.sibpath(__file__, 'simple.js'),})
 
     def childFactory(self, ctx, name):
         if name in ['blueshoes']:
@@ -67,6 +81,28 @@ class MainPage(athena.LivePage):
         s = Slider(data)
         s.page = self
         return ctx.tag[s]
+
+    def render_button(self, ctx, data):
+        label = ctx.tag.children[0] # for plain text in the tag
+        if data: # for when 'data' is active, like in a sequence
+            label = data
+        w = ActionButton(label)
+        w.page = self
+        return w
+
+    def data_actions(self, ctx, data):
+        print roomAction.action_uris()
+        return roomAction.action_uris()
+
+    def render_actionButton(self, ctx, data):
+        ctx.fillSlots('uri', str(data))
+        return ctx.tag
+
+    def render_introspection(self, ctx, data):
+        f = athena.IntrospectionFragment()
+        f.setFragmentParent(self)
+        return ctx.tag[f]
+
 
     # i shouldn't have to write this one
     def render_item(self, ctx, data):
@@ -85,7 +121,7 @@ class _MainPage(rend.Page):
         if name in ['clock.js', 'main.html', 'serve']:
             return static.File(name)
 
-roomAction = rdfaction.RoomAction()
+roomAction = rdfaction.RoomAction(withTwisted=True)
 
 application = service.Application('room')
 site = appserver.NevowSite(_MainPage())

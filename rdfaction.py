@@ -1,18 +1,23 @@
 
-import socket, os, xmlrpclib, logging
+import socket, os, logging
 import RDF
 
 log = logging.getLogger("rdfaction")
 
 class RoomAction:
     """perform actions described in the KB"""
+    prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
+    PREFIX room: <http://projects.bigasterisk.com/room/>
+    """
     
-    def __init__(self, filename="/my/proj/room/midicodes.n3"):
+    def __init__(self, filename="/my/proj/room/midicodes.n3",
+                 withTwisted=False):
         self.filename = filename
         self.load_rdf()
-        self.connect_light()
+        self.withTwisted = withTwisted
 
     def load_rdf(self):
+        log.info("loading rdf from %r" % self.filename)
         self.model = RDF.Model(RDF.MemoryStorage())
         u = RDF.Uri("file:%s" % self.filename)
         try:
@@ -23,15 +28,16 @@ class RoomAction:
             if e.__class__.__name__ != "RedlandError":
                 raise
             raise ValueError("Error parsing %s: %s" % (u, e))
-        
-    def connect_light(self):
-        self.light_server = xmlrpclib.ServerProxy("http://dot:%s" %
-                                     socket.getservbyname("lights","tcp"))
 
+    def action_uris(self):
+        return [node.uri for node in
+                self.model.get_sources(
+            RDF.Uri("http://www.w3.org/2000/01/rdf-schema#Class"),
+            RDF.Uri("http://projects.bigasterisk.com/room/action"))]
+        
     def fire(self, pred, obj):
         """
         fire actions with given pred/obj (both must be quoted n3)
-        
         """
         try:
             self.load_rdf()
@@ -40,12 +46,9 @@ class RoomAction:
             return
         
         model = self.model
-        prefixes = """PREFIX midi: <http://projects.bigasterisk.com/midi/>
-                      PREFIX room: <http://projects.bigasterisk.com/room/>
-                      """
 
         matches = 0
-        for res in RDF.SPARQLQuery(prefixes + '''
+        for res in RDF.SPARQLQuery(self.prefixes + '''
                 SELECT ?action
                 WHERE {
                     [%s %s; room:triggers ?action] .
@@ -53,35 +56,38 @@ class RoomAction:
 
             action = res['action'].uri
             matches = matches + 1
-            log.info("running action %s" % action)
-
-            for res in RDF.SPARQLQuery(prefixes + '''
-                    SELECT ?light ?level
-                    WHERE {
-                     <%s> room:lightLevel [room:light ?light; room:to ?level] .
-                    }''' % action).execute(model):
-                self.do_lightlevel(res['light'].uri, res['level'])
-
-            for res in RDF.SPARQLQuery(prefixes + '''
-                    SELECT ?command
-                    WHERE {
-                     <%s> room:lightCommand ?command .
-                    }''' % action).execute(model):
-                self.light_cmd(res['command'])
-
-            for res in RDF.SPARQLQuery(prefixes + '''
-                    SELECT ?command
-                    WHERE {
-                        <%s> room:execute ?command.
-                    }''' % action).execute(model):
-                log.info("running %s" % str(res['command']))
-                ret = os.system(str(res['command']))
-                if ret != 0:
-                    log.error("command returned %d" % (ret >> 8))
-
+            self.fire_action(action)
+            
         if matches == 0:
             log.debug("no commands matched %r %r" % (pred,obj))
         return matches
+
+    def fire_action(self, action):
+        model = self.model
+        log.info("running action %s" % action)
+
+        for res in RDF.SPARQLQuery(self.prefixes + '''
+                SELECT ?light ?level
+                WHERE {
+                 <%s> room:lightLevel [room:light ?light; room:to ?level] .
+                }''' % action).execute(model):
+            self.do_lightlevel(res['light'].uri, res['level'])
+
+        for res in RDF.SPARQLQuery(self.prefixes + '''
+                SELECT ?command
+                WHERE {
+                 <%s> room:lightCommand ?command .
+                }''' % action).execute(model):
+            self.light_cmd(res['command'])
+
+        for res in RDF.SPARQLQuery(self.prefixes + '''
+                SELECT ?command
+                WHERE {
+                    <%s> room:execute ?command.
+                }''' % action).execute(model):
+            log.info("running %s" % str(res['command']))
+            self.system_cmd(str(res['command']))
+
                     
     def do_lightlevel(self, light_uri, level):
         prefix = "http://projects.bigasterisk.com/room/lights/"
@@ -96,11 +102,30 @@ class RoomAction:
     def set_light(self, name, lev):
         log.info("%s to %s" % (name,lev))
         self.light_cmd("setLight", name, lev)
-    
+
     def light_cmd(self, method, *args):
-        try:
-            getattr(self.light_server, str(method))(*args)
-        except xmlrpclib.Fault, e:
-            log.error("%s on command %s%r" % (e, method, tuple(args)))
-            self.connect_light()
+        if not hasattr(self, 'light_server'):
+            uri = "http://dot:%s" % socket.getservbyname("lights","tcp")
+            if not self.withTwisted:
+                import xmlrpclib
+                self.light_server = xmlrpclib.ServerProxy(uri)
+            else:
+                import twisted.web.xmlrpc
+                self.light_server = twisted.web.xmlrpc.Proxy(uri)
+
+        if not self.withTwisted:
+            try:
+                getattr(self.light_server, str(method))(*args)
+            except xmlrpclib.Fault, e:
+                self.xmlrpc_err("%s on command %s%r" % (e, method,tuple(args)))
+        else:
+            d = self.light_server.callRemote(method, *args)
+            d.addErrback(self.xmlrpc_err)
+            
+    def xmlrpc_err(self, txt):
+        log.error(txt)
         
+    def system_cmd(self, cmd):
+        ret = os.system(cmd)
+        if ret != 0:
+            log.error("command returned %d" % (ret >> 8))
