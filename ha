@@ -145,7 +145,8 @@ class task_phone(Task):
                     
                 self.offtime = 0                
         else:
-            if self.offtime and not self.talking and time.time()-self.offtime>.1: 
+            now = time.time()
+            if self.offtime and not self.talking and now - self.offtime>.1: 
                 log.info('pick up')
                 stdout.flush()
                 if not self.loudvol: # maybe we have this from before the rings
@@ -156,7 +157,7 @@ class task_phone(Task):
                 tasks.append(vol)
                 self.talking = 1
                 
-            if self.ringtime and time.time()-self.ringtime>.1: # was ringing, now steady? ring must have stopped
+            if self.ringtime and now - self.ringtime>.1: # was ringing, now steady? ring must have stopped
                 log.info('ring over')
                 stdout.flush()
                 self.ringtime = 0
@@ -424,7 +425,7 @@ phonetask = task_phone()
 tasks.append(phonetask)
 #tasks.append(task_door())
 tasks.append(task_pager())
-tasks.append(task_vol_slider())
+#tasks.append(task_vol_slider())
 screenmotor = task_screenmotor()
 tasks.append(screenmotor)
 tasks.append(ambient_light())
@@ -459,7 +460,14 @@ else:
 
 def backgroundtasks():
     for x in tasks:
-        if not x.step():
+        if debug:
+            t1 = time.time()
+            repeat = x.step()
+            stepTime = time.time() - t1
+            print "%s step takes %.1fms" % (x.__class__, stepTime * 1000)
+        else:
+            repeat = x.step()
+        if not repeat:
             tasks.remove(x)
     reactor.callLater(.005+.2*debug, backgroundtasks)
 
