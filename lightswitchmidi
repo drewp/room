@@ -33,7 +33,7 @@ class NoteCode:
 
         self.room_action = RoomAction()
 
-        self.action([60,65]) # tester
+        #self.action([60,65]) # tester
 
     def event(self,ev):
         if ev.data.__class__ != amidi.MidiEvent.NoteOn:
