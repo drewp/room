@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 
-""" run lircd, don't bother with .lircrc, and then run this. lircd
+""" run 'lircd -n', don't bother with .lircrc, and then run this. lircd
 commands will be used as room/ir/command actions"""
 
 from logsetup import commonlogsetup
@@ -25,7 +25,7 @@ class LircClient(LineReceiver):
         self.repeatingKeys = "volumedown volumeup".split()
 
         try:
-            self.sound = pygame.mixer.Sound("/home/drewp/angel_ogg/angel_question.wav")
+            self.sound = pygame.mixer.Sound("/home/drewp/snd/angel_ogg/angel_question.wav")
         except pygame.error, e:
             log.warn("sound load failed: %s" % e)
             self.sound = None
