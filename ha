@@ -2,7 +2,6 @@
 
 from k8000 import *
 import socket
-import lights_server
 import device
 from light import k8000_dimmed, k8000_nd, Rainbow
 from volume import Volume
@@ -14,6 +13,9 @@ from logsetup import commonlogsetup
 
 from twisted.web import xmlrpc, server
 from twisted.internet import reactor
+
+from louie import dispatcher
+import hubclient
 
 log=commonlogsetup()
 
@@ -287,13 +289,17 @@ class task_door(Task):
         d = ReadIOchannel(digi['dooropen'])
         if d != self.door:
             self.door = d
-            log.info('door %s' % (('close','open')[self.door]))
+            state = ('close','open')[self.door]
+            log.info('door %s' % state)
+            dispatcher.send("door", state=state)
             stdout.flush()
 
 	m = not ReadIOchannel(digi['motion'])
 	if m != self.motion: 
             self.motion = m
-            log.info('motion %s' % (('no','yes')[self.motion]))
+            state = ('no','yes')[self.motion]
+            log.info('motion %s' % state)
+            dispatcher.send("motion", state=state)
             stdout.flush()
         return 1
 
@@ -423,7 +429,7 @@ tasks = []
 
 phonetask = task_phone()
 tasks.append(phonetask)
-#tasks.append(task_door())
+tasks.append(task_door())
 tasks.append(task_pager())
 #tasks.append(task_vol_slider())
 screenmotor = task_screenmotor()
@@ -450,7 +456,8 @@ reactor.listenTCP(socket.getservbyname('lights','tcp'),
                   server.Site(xmlrpcserv))
 
 xmlrpcserv.putSubHandler("screen",screenmotor)
-        
+
+hubclient.connect("dash", 2012)
 
 debug=0
 if debug:

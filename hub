@@ -1,0 +1,34 @@
+from twisted.spread import pb
+from twisted.internet import reactor
+
+_clients = set()
+class Hub(pb.Root):
+    def remote_send(self, client, **kw):
+        print "received signal %r" % kw
+        
+        if kw['signal'] == "timed test":
+            reactor.callLater(1,
+                              lambda: self.bcast(None,
+                                                 signal="timed test response"))
+
+        self.bcast(sourceClient=client, **kw)
+
+    def remote_addClient(self, satt):
+        print "adding client", satt
+        _clients.add(satt)
+
+    def bcast(self, sourceClient, **kw):
+        for c in _clients:
+            if c == sourceClient:
+                print "  not sending to %s" % c
+                continue
+            try:
+                print "  sending to %s" % c
+                c.callRemote("send", **kw)
+            except pb.DeadReferenceError:
+                print "  client %r dead, continuing" % c
+                pass
+
+reactor.listenTCP(2012, pb.PBServerFactory(Hub()))
+print "serving on 2012"
+reactor.run()

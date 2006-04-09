@@ -1,0 +1,58 @@
+import time, os, random
+from twisted.internet import reactor
+from louie import dispatcher
+
+from speak import say
+
+import hubclient
+hubclient.connect()
+
+
+def listen():
+    print "i got response"
+dispatcher.connect(listen, "timed test response")
+
+
+class EveningLights:
+
+    # you have to get from motion=yes to the door within this time, or
+    # else I'll think you're someone coming home
+    MOTION_TO_DOOR_SECONDS = 30
+    
+    def __init__(self):
+        dispatcher.connect(self.door, "door")
+        dispatcher.connect(self.motion, "motion")
+
+        self.lastSeenInside = 0
+
+    def door(self, state):
+        print "door", state
+        if state == "open":
+            if self.lastSeenInside > time.time() - self.MOTION_TO_DOOR_SECONDS:
+                print "bye"
+                say("Kelsi, goodbye. " +
+                    random.choice(["I will miss you.",
+                                   "Watch out for the noise.",
+                                   "Don't forget to check your email today.",
+                                   
+                                   ]))
+            else:
+                print "hello"
+                say("Kelsi, hello. " +
+                    random.choice(["Your hot chocolate is ready.",
+                                   "Watch out for the noise.",
+                                   "There is something new on S F gate.",
+                                   "This is computer talking.",
+                                   "You probably have some email messages.",
+                    ]))
+                
+            self.lastSeenInside = time.time()
+                
+    def motion(self, state):
+        print "motion", state
+        if state == "yes":
+            self.lastSeenInside = time.time()
+
+e = EveningLights()
+
+reactor.run()
