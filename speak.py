@@ -1,4 +1,8 @@
-import os, tempfile
+import os, tempfile, socket
+
+"""
+ubuntu pkgs: festival festvox-rablpc16k (at least)
+"""
 
 def say(sableXmlText):
     tf = tempfile.NamedTemporaryFile(suffix=".sable")
@@ -9,7 +13,10 @@ def say(sableXmlText):
 <SABLE>""" + sableXmlText + """</SABLE>""")
     tf.flush()
     wav = tempfile.NamedTemporaryFile(suffix=".wav")
-    os.system("/my/dl/dl/festival/bin/text2wave %s > %s" % (tf.name, wav.name))
+    text2wave = "text2wave"
+    if socket.gethostname() == "dash":
+        text2wave = "/my/dl/dl/festival/bin/text2wave"
+    os.system("%s %s > %s" % (text2wave, tf.name, wav.name))
     os.system("play %s" % wav.name)
     
 
