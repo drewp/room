@@ -111,6 +111,10 @@ class MainPage(athena.LivePage):
     def data_lightNames(self, ctx, data):
         return ['drewdesk', 'deskhalo', 'couchleft', 'couchright', 'dining']
 
+    def data_sliderControls(self, ctx, data):
+        """all controls that could be adjusted with a slider"""
+
+
     def beforeRender(self, ctx):
         inevow.IRequest(ctx).prePathURL = lambda: '/room/'
 
