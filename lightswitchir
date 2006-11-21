@@ -1,8 +1,24 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 
 """ run 'lircd -n', don't bother with .lircrc, and then run this. lircd
-commands will be used as room/ir/command actions"""
+commands will be used as room/ir/command actions
 
+lircd ubuntu install notes:
+
+get the modules pkg
+ 1101  debian/rules binary-modules KSRC=/usr/src/linux
+ 1102  dpkg -i ../../irc-modules-*.deb
+ 1107  insmod ./lirc_serial.ko
+ 1110  update-modules
+ 1111  depmod -ae
+ 1112  modprobe lirc_serial
+ 1114  insmod ./lirc_dev.ko
+dmesg logs told me to do this:
+ 1117  setserial /dev/ttyS0 uart none
+ 1118  modprobe lirc_serial
+
+"""
+import os
 from logsetup import commonlogsetup
 from twisted.internet import reactor, tksupport, defer, protocol
 from twisted.protocols.basic import LineReceiver
@@ -44,14 +60,31 @@ class LircClient(LineReceiver):
             return
 
         if self.sound:
-            self.sound.play()
+            pass#self.sound.play()
 
         try:
             matches = room_action.fire(
                 "<http://projects.bigasterisk.com/room/ir/command>",
                 '"%s"' % key)
             if matches == 0:
-                self.sound
+                for button, cmd in [
+                    ('vcr1-step+', 'event up'),
+                    ('vcr1-step-', 'event down'),
+                    ('tv1-volume-', 'event left'),
+                    ('tv1-volume+', 'event right'),
+                    ('vcr1-still_forward', 'pause'),
+                    ('vcr1-rewind', 'seek -5'),
+                    ('vcr1-wind', 'seek +5'),
+                    ('tv1-mute/demute', 'event select'),
+                    ('vcr1-timer_programming', 'event menu1'),
+                    ]:
+                    if key == button:
+                        print "xine command", cmd
+                        os.system('xine-remote -c "%s"' % cmd)
+                        break
+                else:
+                    print "no matches for command %r" % key
+
         except (Exception, ), e:
             log.warn("action failed: %s" % e)
             pass
