@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 """pyalsamidi at http://infohost.nmt.edu/~dbaird/software/
+    --> depends on ubuntu pkg libasound2-dev
 
 n3->rdf convertor at http://www.w3.org/DesignIssues/Notation3.html
 
@@ -11,6 +12,10 @@ fluidsynth
 prog 0 86
 
 alsa-patch-bay
+
+more ubuntu pkg needed:
+python2.4-alsaaudio
+python2.4-librdf
 
 
 
