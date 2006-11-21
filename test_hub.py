@@ -1,7 +1,7 @@
 from twisted.internet import reactor
 import hubclient
 from louie import dispatcher
-hubclient.connect("dash", 2012)
+hubclient.connect()
 dispatcher.send("signal one")
 
 dispatcher.send("timed test")
