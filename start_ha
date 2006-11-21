@@ -1,0 +1,3 @@
+#!/bin/sh
+cd /my/proj/room
+exec python ./ha

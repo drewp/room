@@ -1,0 +1,16 @@
+**********
+>>>>>>
+sliderChange ['couchright', '0.15']
+RESULT None>>>>>>
+sliderChange ['couchright', '0.3']
+RESULT None>>>>>>
+sliderChange ['couchright', '0.45']
+RESULT None>>>>>>
+sliderChange ['drewdesk', '0.15']
+RESULT None>>>>>>
+sliderChange ['drewdesk', '0.3']
+RESULT None>>>>>>
+sliderChange ['drewdesk', '0.45']
+RESULT None>>>>>>
+sliderChange ['drewdesk', '0.6']
+RESULT None
