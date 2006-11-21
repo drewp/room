@@ -1,5 +1,7 @@
-import time, os, random
+#!/usr/bin/python
+import time, os, random, datetime
 from twisted.internet import reactor
+from rdfaction import RoomAction
 from louie import dispatcher
 
 from speak import say
@@ -12,6 +14,10 @@ def listen():
     print "i got response"
 dispatcher.connect(listen, "timed test response")
 
+def randomLine(filename):
+    return random.choice([line.strip()
+                          for line in open(filename).readlines()
+                          if line.strip()])
 
 class EveningLights:
 
@@ -30,22 +36,13 @@ class EveningLights:
         if state == "open":
             if self.lastSeenInside > time.time() - self.MOTION_TO_DOOR_SECONDS:
                 print "bye"
-                say("Kelsi, goodbye. " +
-                    random.choice(["I will miss you.",
-                                   "Watch out for the noise.",
-                                   "Don't forget to check your email today.",
-                                   
-                                   ]))
+                say(randomLine("evening_lights.goodbye.lines"))
             else:
                 print "hello"
-                say("Kelsi, hello. " +
-                    random.choice(["Your hot chocolate is ready.",
-                                   "Watch out for the noise.",
-                                   "There is something new on S F gate.",
-                                   "This is computer talking.",
-                                   "You probably have some email messages.",
-                    ]))
-                
+                say(randomLine("evening_lights.hello.lines"))
+                if 18 <= datetime.datetime.now().hour <= 24:
+                    RoomAction().fire_action("http://projects.bigasterisk.com/room/comeHome")
+                              
             self.lastSeenInside = time.time()
                 
     def motion(self, state):
@@ -53,6 +50,8 @@ class EveningLights:
         if state == "yes":
             self.lastSeenInside = time.time()
 
+
 e = EveningLights()
+say("evening lights program activated")
 
 reactor.run()
