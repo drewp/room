@@ -1,5 +1,6 @@
 
 import socket, os, logging
+import alsaaudio
 import RDF
 
 log = logging.getLogger("rdfaction")
@@ -32,6 +33,7 @@ class RoomAction:
     def action_uris(self):
         return [node.uri for node in
                 self.model.get_sources(
+            # class should be type. fix midicodes.n3 too.
             RDF.Uri("http://www.w3.org/2000/01/rdf-schema#Class"),
             RDF.Uri("http://projects.bigasterisk.com/room/action"))]
         
@@ -88,6 +90,14 @@ class RoomAction:
             log.info("running %s" % str(res['command']))
             self.system_cmd(str(res['command']))
 
+##         for res in RDF.SPARQLQuery(self.prefixes + '''
+##                 SELECT ?command
+##                 WHERE {
+##                     <%s> room:execute ?command.
+##                 }''' % action).execute(model):
+##             log.info("running %s" % str(res['command']))
+##             self.system_cmd(str(res['command']))
+
                     
     def do_lightlevel(self, light_uri, level):
         prefix = "http://projects.bigasterisk.com/room/lights/"
@@ -129,3 +139,9 @@ class RoomAction:
         ret = os.system(cmd)
         if ret != 0:
             log.error("command returned %d" % (ret >> 8))
+
+    def mixer_cmd(self, channel, levels):
+        m = alsaaudio.Mixer("Master")
+#        m.getvolume()
+
+        m.setvolume(90,alsaaudio.MIXER_CHANNEL_ALL)
