@@ -457,7 +457,7 @@ reactor.listenTCP(socket.getservbyname('lights','tcp'),
 
 xmlrpcserv.putSubHandler("screen",screenmotor)
 
-hubclient.connect("dash", 2012)
+hubclient.connect()
 
 debug=0
 if debug:

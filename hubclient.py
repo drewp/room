@@ -22,7 +22,7 @@ class LocalSignal(pb.Referenceable):
 
 _localSignal = LocalSignal()
 
-def connect(host="dash", port=2012):
+def connect(host="dot", port=2012):
     global _root
     fact = pb.PBClientFactory()
     reactor.connectTCP(host, port, fact)
