@@ -14,6 +14,7 @@ SimpleWidget.Button.methods(
     });
   },
   function click(self) {
+      // should depress the button until the callback comes
       self.callRemote('onClick').addErrback(
         function (err) { Divmod.err(err); });
   });
