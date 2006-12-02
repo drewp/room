@@ -14,10 +14,17 @@ class RoomAction:
     def __init__(self, filename="/my/proj/room/midicodes.n3",
                  withTwisted=False):
         self.filename = filename
+        self.model = None
+        self.modelMtime = None
         self.load_rdf()
         self.withTwisted = withTwisted
 
     def load_rdf(self):
+        mtime = os.path.getmtime(self.filename)
+        if self.model is not None and mtime <= self.modelMtime:
+            return
+        self.modelMtime = mtime
+            
         log.info("loading rdf from %r" % self.filename)
         self.model = RDF.Model(RDF.MemoryStorage())
         u = RDF.Uri("file:%s" % self.filename)
