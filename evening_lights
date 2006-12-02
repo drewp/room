@@ -15,9 +15,10 @@ def listen():
 dispatcher.connect(listen, "timed test response")
 
 def randomLine(filename):
-    return random.choice([line.strip()
-                          for line in open(filename).readlines()
-                          if line.strip()])
+    return random.choice(
+        [line.strip()
+         for line in open("/my/proj/room/%s" % filename).readlines()
+         if line.strip()])
 
 class EveningLights:
 
