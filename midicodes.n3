@@ -62,9 +62,13 @@
 
 # new remote
 [ir:command "vcr1-RF_switch"; :triggers :projLights] .
+[ir:command "vcr1-0"; :triggers :bright]. 
 [ir:command "vcr1-sound_effects3"; rdfs:label "sleep"; :triggers :dark].
+
+# the real volume keys are dvd menu nav arrows
 [ir:command "vcr1-1"; :triggers :volumeUp].
 [ir:command "vcr1-4"; :triggers :volumeDown].
+
 [ir:command "vcr1-2"; :triggers :screenUp].
 [ir:command "vcr1-5"; :triggers :screenDown].
 [ir:command "vcr1-7"; :triggers :projOn].
