@@ -4,7 +4,21 @@
 read google's calendar XML (atom) from stdin and output RDF to
 stdout.
 
-The fromIcal.py rdf is like this:
+Sample output, after cwm formatting:
+
+    @prefix : <http://www.w3.org/2002/12/cal/> .
+    @prefix XML: <http://www.w3.org/2001/XMLSchema#> .
+    @prefix basic: <http://www.google.com/calendar/feeds/{private}/basic/> .
+    
+    basic:0mt854mv5jvt945jvm8tt558ts     :icaltzddescription "breakfast";
+         :icaltzddtstart "2007-02-23T09:00-08:00"^^XML:dateTime .
+    
+    basic:39t4839t48um3498tum3948tj4     :icaltzddescription "lunch";
+         :icaltzddtstart "2007-02-16T12:00-08:00"^^XML:dateTime .
+
+
+Compare to http://www.w3.org/2002/12/cal/fromIcal.py, whose output is
+like this:
 
     @prefix : <http://www.w3.org/2002/12/cal/icaltzd#> .
     @prefix XML: <http://www.w3.org/2001/XMLSchema#> .
@@ -17,10 +31,10 @@ The fromIcal.py rdf is like this:
          :dtstart "2003-03-11T16:00:00"^^New:tz;
          etc
 
-and that doesn't seem so nice to me. Why aren't the timezones in the
-literals correctly? The ontology is at http://www.w3.org/2002/12/cal/icaltzd
+Why aren't the timezones in the literals correctly? The ontology is at
+http://www.w3.org/2002/12/cal/icaltzd
 
-To view the ical onto with sort-of pretty formatting:
+To view the ical ontology with sort-of pretty formatting:
 http://www.w3.org/2005/08/online_xslt/xslt?xslfile=http%3A%2F%2Frhizomik.net%2Fredefer%2Fxsl%2Fns-schema.xsl&xmlfile=http%3A%2F%2Fwww.w3.org%2F2002%2F12%2Fcal%2Ficaltzd&content-type=&submit=transform
 
 see also:
@@ -28,6 +42,7 @@ see also:
   output at http://torrez.us/services/ics2rdf/?ical=http://www.w3.org/2002/12/cal/test/bus-hrs.ics&xsl=on
   
 """
+         
 import time, sys
 from xml.utils import iso8601
 from rdflib import URIRef, Namespace, Literal
