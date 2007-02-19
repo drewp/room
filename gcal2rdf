@@ -1,0 +1,82 @@
+#!/usr/bin/python
+
+"""
+read google's calendar XML (atom) from stdin and output RDF to
+stdout.
+
+The fromIcal.py rdf is like this:
+
+    @prefix : <http://www.w3.org/2002/12/cal/icaltzd#> .
+    @prefix XML: <http://www.w3.org/2001/XMLSchema#> .
+    @prefix New: <http://www.w3.org/2002/12/cal/tzd/America/New_York#> .
+
+    <http://www.w3.org/2002/12/cal/test/bus-hrs.ics#20030314T052656Z-25601-69-1-0@dirk>     a :Vevent;
+         :class "PUBLIC";
+         :dtend "2003-03-11T23:00:00"^^New:tz;
+         :dtstamp "2003-03-14T05:26:56Z"^^XML:dateTime;
+         :dtstart "2003-03-11T16:00:00"^^New:tz;
+         etc
+
+and that doesn't seem so nice to me. Why aren't the timezones in the
+literals correctly? The ontology is at http://www.w3.org/2002/12/cal/icaltzd
+
+To view the ical onto with sort-of pretty formatting:
+http://www.w3.org/2005/08/online_xslt/xslt?xslfile=http%3A%2F%2Frhizomik.net%2Fredefer%2Fxsl%2Fns-schema.xsl&xmlfile=http%3A%2F%2Fwww.w3.org%2F2002%2F12%2Fcal%2Ficaltzd&content-type=&submit=transform
+
+see also:
+  http://www.w3.org/2002/12/cal/fromIcal.py
+  output at http://torrez.us/services/ics2rdf/?ical=http://www.w3.org/2002/12/cal/test/bus-hrs.ics&xsl=on
+  
+"""
+import time, sys
+from xml.utils import iso8601
+from rdflib import URIRef, Namespace, Literal
+from rdflib.Graph import Graph
+import feedparser
+
+XS = Namespace("http://www.w3.org/2001/XMLSchema#")
+ICAL = Namespace("http://www.w3.org/2002/12/cal/icaltzd")
+
+def parseGoogleSummary(summary):
+    """the google event start datetime is written in 'english' in the
+    summary. I couldn't find any nicer format. Currently, only
+    starttime is returned. And, the result will be missing :00
+    seconds, which violates XS
+
+    They're like this:
+
+    <summary type="html">When: Sun Mar 4, 2007 8am to 9am&amp;nbsp; PST&lt;br&gt;   &lt;br&gt;Event Status:     confirmed</summary>
+
+    """
+    (_when, wday, mon, dom, year, starttime,
+     _to, _end, zone, _rest) = summary.split(None, 9)
+    dom = dom.strip(',')
+    zone = zone[:3]
+
+    for fmt in ["%Y %b %d %I%p %Z", "%Y %b %d %I:%M%p %Z"]:
+        try:
+            t = time.mktime(time.strptime("%s %s %s %s %s" %
+                                     (year, mon, dom, starttime, zone), fmt))
+            break
+        except ValueError:
+            pass
+
+    # this is not necessarily in the tz of that day-of-the-year!
+    whenTime = iso8601.ctime(t) 
+    return whenTime
+
+
+d = feedparser.parse(sys.stdin)
+graph = Graph()
+
+for entry in d['entries']:
+    whenTime = parseGoogleSummary(entry['summary'])
+    uri = URIRef(entry['id'])
+
+    graph.add((uri, ICAL['description'], Literal(entry['title'])))
+    # I'm using a real dateTime with correct timezone. Other tools are
+    # making dtstart where the datatype contains the timezone
+    graph.add((uri, ICAL['dtstart'],
+               Literal(whenTime, datatype=XS['dateTime'])))
+
+print graph.serialize(format="n3")
