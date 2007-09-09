@@ -19,15 +19,16 @@ class Hub(pb.Root):
         _clients.add(satt)
 
     def bcast(self, sourceClient, **kw):
-        for c in _clients:
+        for c in _clients.copy():
             if c == sourceClient:
-                print "  not sending to %s" % c
+                #print "  not sending to %s" % c
                 continue
             try:
                 print "  sending to %s" % c
                 c.callRemote("send", **kw)
             except pb.DeadReferenceError:
-                print "  client %r dead, continuing" % c
+                print "  client %r dead, removing" % c
+                _clients.remove(c)
                 pass
 
 reactor.listenTCP(2012, pb.PBServerFactory(Hub()))
