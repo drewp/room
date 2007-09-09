@@ -67,6 +67,7 @@ class LircClient(LineReceiver):
                 "<http://projects.bigasterisk.com/room/ir/command>",
                 '"%s"' % key)
             if matches == 0:
+                log.info("considering xine cmds")
                 for button, cmd in [
                     ('vcr1-step+', 'event up'),
                     ('vcr1-step-', 'event down'),
@@ -79,7 +80,7 @@ class LircClient(LineReceiver):
                     ('vcr1-timer_programming', 'event menu1'),
                     ]:
                     if key == button:
-                        print "xine command", cmd
+                        log.info("xine command %s" % cmd)
                         os.system('xine-remote -c "%s"' % cmd)
                         break
                 else:
