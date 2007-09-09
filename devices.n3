@@ -1,0 +1,26 @@
+@prefix : <http://projects.bigasterisk.com/room/>.
+@prefix lights: <http://projects.bigasterisk.com/room/lights/>.
+@prefix device: <http://projects.bigasterisk.com/device/>.
+@prefix control: <http://projects.bigasterisk.com/control/>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix slashport: <http://slash.bigasterisk.com/parport/3bc#> .
+
+
+device:lock1 rdfs:label "downstairs door lock" .
+
+slashport:pin2 a :ParportPin; 
+  :host "slash.bigasterisk.com";
+  :port "0x3bc"; 
+  :bit 2 .
+
+{ device:lock1 :state :locked   } => { slashport:pin2 :value 0 } .
+{ device:lock1 :state :unlocked } => { slashport:pin2 :value 1 } .
+
+#drew's phone = friendly phone
+#kelsi phone = friendly phone
+#bluetooth senses friendly phone   ->   all doors are unlocked
+#all locks = device:lock1
+
+# maybe each tool should have its own little graph, and it announces
+# changes to that graph. the listener tools make a combined-graph of
+# the sources, and draw their conclusions on that

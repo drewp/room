@@ -1,0 +1,22 @@
+
+
+from twisted.internet import reactor
+import hubclient
+import time, socket
+from louie import dispatcher
+from rdflib.Graph import Graph
+from rdflib import Literal, Variable, Namespace
+
+PORT = Namespace("http://slash.bigasterisk.com/parport/3bc#")
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
+
+hubclient.connect()
+
+v = 0
+def loop():
+    global v
+    dispatcher.send((str(PORT['pin2']), str(ROOM['value']), None), obj=v)
+    v = not v
+    reactor.callLater(2, loop)
+loop()
+reactor.run()

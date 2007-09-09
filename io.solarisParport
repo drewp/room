@@ -1,0 +1,71 @@
+#!/usr/bin/python
+
+"""
+output on a parallel port under solaris
+
+uses pypi: Louie, BitVector, rdflib
+
+follow http://www.captain.at/programming/solaris/ to install
+http://sourceforge.net/projects/libieee1284
+
+you could do 'make install' to install the python module, but it
+doesn't work right. see code below for a direct ioctl->driver version
+"""
+from solarisparport import SolarisParport
+from twisted.internet import reactor
+import hubclient
+import socket, logging
+from louie import dispatcher
+from rdflib.Graph import Graph
+from rdflib import Literal, Variable, Namespace
+from BitVector import BitVector
+
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
+
+from logsetup import commonlogsetup
+log = commonlogsetup(filename=None)
+log.setLevel(logging.INFO)
+
+class ParportBits(object):
+    """allow the bits on the parallel port to be set individually"""
+    def __init__(self, port=0x3bc):
+        self.port = SolarisParport()
+        self.port.open()
+        self.data = BitVector(size=8)
+        self.write()
+
+    def write(self):
+        self.port.write_data(int(self.data))
+
+    def set(self, bit, value):
+        """bit is measured from the LSB"""
+        log.info("bit %s to %s" % (bit, value))
+        self.data[7-bit] = int(value)
+        self.write()
+
+port = 0x3bc # only supporting one port per process for now
+bits = ParportBits(port)
+
+hubclient.connect()
+dispatcher.send("solarisParport ready for messages")
+
+graph = Graph()
+graph.parse("devices.n3", format="n3")
+
+thisHost = Literal(socket.getfqdn())
+for row in graph.query("""SELECT ?pin ?bit {
+                            ?pin rm:host ?host;
+                                 rm:port ?port;
+                                 rm:bit ?bit .
+                          }""",
+                       initNs=dict(rm=ROOM),
+                       initBindings={Variable("?port") : hex(port),
+                                     Variable("?host") : thisHost,
+                                     }):
+    pin, bit = row
+    log.info("watching for changes to %s", pin)
+    dispatcher.connect(lambda obj: bits.set(int(bit), value=obj),
+                       (str(pin), str(ROOM['value']), None), weak=False)
+
+reactor.run()
+

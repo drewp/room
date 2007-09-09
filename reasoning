@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+from twisted.internet import reactor
+import hubclient
+import time, socket, logging
+from louie import dispatcher
+from rdflib.Graph import Graph
+from rdflib import Literal, Variable, Namespace, URIRef
+from logsetup import commonlogsetup
+
+log = commonlogsetup(filename=None)
+log.setLevel(logging.INFO)
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
+
+
+def anyEvent(signal, **kw):
+    if not (isinstance(signal, tuple) and len(signal) == 3):
+        return
+
+    s, p = URIRef(signal[0]), URIRef(signal[1])
+    if str(kw['obj']).startswith('http:'):
+        o = URIRef(kw['obj'])
+    else:
+        o = Literal(kw['obj'])
+
+    consider((s,p,o), kw.get('delete', False))
+
+
+def consider((s,p,o), delete=False):
+    """
+    this is where the reasoning would go, taking all the known stmts
+    and producing some more that the output modules would care about
+    """
+    if (s,p,o) == (ROOM['bluetooth'], ROOM['senses'], ROOM['drewTreo']):
+        pinValue = True
+        if delete:
+            pinValue = False
+        pin = URIRef("http://slash.bigasterisk.com/parport/3bc#pin2")
+        log.info(":bluetooth :senses %s => parport:pin2 :value %s" %
+                (o, pinValue))
+        dispatcher.send((str(pin), str(ROOM['value']), None), obj=pinValue)
+    
+hubclient.connect()
+dispatcher.connect(anyEvent)
+reactor.run()
