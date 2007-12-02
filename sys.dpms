@@ -1,0 +1,80 @@
+#!/usr/bin/python
+from __future__ import division
+"""
+see 
+  http://tperl.blogspot.com/2007/09/x11-idle-time-and-focused-window-in.html
+
+On ubuntu, python-xlib may need a patch:
+  https://bugs.launchpad.net/ubuntu/+source/python-xlib/+bug/173414
+"""
+from rdflib.Graph import Graph
+from rdflib import Literal, Namespace, URIRef
+import Xlib.display
+import ctypes, os, time, socket
+
+xlib = ctypes.cdll.LoadLibrary('libX11.so')
+xext = ctypes.cdll.LoadLibrary('libXext.so')
+xss = ctypes.cdll.LoadLibrary('libXss.so.1')
+
+class XScreenSaverInfo( ctypes.Structure):
+    """ typedef struct { ... } XScreenSaverInfo;
+    http://linux.die.net/man/3/xscreensaverallocinfo has detail
+    """
+    _fields_ = [('window',      ctypes.c_ulong), # screen saver window
+                ('state',       ctypes.c_int),   # off,on,disabled
+                ('kind',        ctypes.c_int),   # blanked,internal,external
+                ('since',       ctypes.c_ulong), # milliseconds
+                ('idle',        ctypes.c_ulong), # milliseconds
+                ('event_mask',  ctypes.c_ulong)] # events
+
+xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(XScreenSaverInfo)
+
+def dpmsPowerLevel(dpy):
+    """takes a ctypes DISPLAY*"""
+    power_level = ctypes.c_uint16()
+    state = ctypes.c_uint8()
+    xext.DPMSInfo(dpy, ctypes.byref(power_level), ctypes.byref(state))
+    return {
+      # from /usr/include/X11/extensions/dpms.h
+      0: 'On',
+      1: 'Standby',
+      2: 'Suspend',
+      3: 'Off'}[power_level.value]
+
+def focusedWindow(display):
+    """takes a Xlib display object"""
+    focus = display.get_input_focus()
+    # http://www.sbin.org/doc/Xlib/chapt_12.html
+    res_class, res_name = focus.focus.get_wm_class()
+    wm_name = focus.focus.get_wm_name()
+    return res_class, res_name, wm_name
+
+def idleTime(dpy, root):
+    """takes ctypes Display* and Window*"""
+    xss_info = xss.XScreenSaverAllocInfo()
+    xss.XScreenSaverQueryInfo( dpy, root, xss_info)
+    seconds = xss_info.contents.idle / 1000
+    xlib.XFree(xss_info)
+    return seconds
+    
+
+display = Xlib.display.Display()
+dpy = xlib.XOpenDisplay(os.environ['DISPLAY'])
+root = xlib.XDefaultRootWindow(dpy)
+
+IDLE = Namespace("http://bigasterisk.com/computerIdleState/")
+HERE = URIRef("http://%s/console" % socket.gethostname())
+while 1:
+    g = Graph()
+    g.bind('idle', IDLE)
+    res_class, res_name, wm_name = focusedWindow(display)
+    g.add((HERE, IDLE['focusClass'], Literal(res_class)))
+    g.add((HERE, IDLE['focusName'], Literal(res_name)))
+    g.add((HERE, IDLE['focusWindowName'], Literal(wm_name)))
+    
+    g.add((HERE, IDLE['lastNonIdle'], Literal(time.time() - idleTime(dpy, root))))
+    g.add((HERE, IDLE['power'], IDLE['power/%s' % dpmsPowerLevel(dpy)]))
+
+    print g.serialize(format='n3')
+    print
+    time.sleep(.5)
