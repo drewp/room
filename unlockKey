@@ -1,0 +1,23 @@
+#!/usr/bin/python
+
+# bind this to a keyboard key to buzz people in
+import os
+from twisted.internet import reactor
+from twisted.python.util import sibpath
+import hubclient
+import time, socket
+from louie import dispatcher
+from rdflib.Graph import Graph
+from rdflib import Literal, Variable, Namespace
+
+PORT = Namespace("http://bang.bigasterisk.com/parport/parport0#")
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
+
+hubclient.connect()
+
+os.system("play %s &" % sibpath(__file__, "sonar.wav"))
+reactor.callLater(0, dispatcher.send, (str(PORT['pin0']), str(ROOM['value']), None), obj=1)
+reactor.callLater(5, dispatcher.send, (str(PORT['pin0']), str(ROOM['value']), None), obj=0)
+reactor.callLater(5.5, reactor.stop)
+
+reactor.run()
