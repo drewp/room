@@ -3,7 +3,7 @@
 """
 output on a parallel port under solaris
 
-uses pypi: Louie, BitVector, rdflib
+uses pypi: Louie, BitVector, rdflib, python-parallel
 
 follow http://www.captain.at/programming/solaris/ to install
 http://sourceforge.net/projects/libieee1284
@@ -11,7 +11,7 @@ http://sourceforge.net/projects/libieee1284
 you could do 'make install' to install the python module, but it
 doesn't work right. see code below for a direct ioctl->driver version
 """
-from solarisparport import SolarisParport
+from solarisparport import SolarisParport, LinuxParallel
 from twisted.internet import reactor
 import hubclient
 import socket, logging
@@ -28,8 +28,8 @@ log.setLevel(logging.INFO)
 
 class ParportBits(object):
     """allow the bits on the parallel port to be set individually"""
-    def __init__(self, port=0x3bc):
-        self.port = SolarisParport()
+    def __init__(self, port):
+        self.port = port
         self.port.open()
         self.data = BitVector(size=8)
         self.write()
@@ -43,25 +43,29 @@ class ParportBits(object):
         self.data[7-bit] = int(value)
         self.write()
 
-port = 0x3bc # only supporting one port per process for now
-bits = ParportBits(port)
+#port = 0x3bc # only supporting one port per process for now
+p = LinuxParallel() # SolarisParport()
+bits = ParportBits(p)
 
 hubclient.connect()
-dispatcher.send("solarisParport ready for messages")
+dispatcher.send("parport ready for messages")
 
 graph = Graph()
 graph.parse("devices.n3", format="n3")
 
 thisHost = Literal(socket.getfqdn())
-for row in graph.query("""SELECT ?pin ?bit {
-                            ?pin rm:host ?host;
-                                 rm:port ?port;
-                                 rm:bit ?bit .
-                          }""",
-                       initNs=dict(rm=ROOM),
-                       initBindings={Variable("?port") : hex(port),
-                                     Variable("?host") : thisHost,
-                                     }):
+thisDevice = Literal(bits.port.device)
+log.info("I have %r on %r" % (thisDevice, thisHost))
+for row in graph.query(
+    """SELECT ?pin ?bit {
+         ?pin rm:host ?host;
+         rm:port ?port;
+         rm:bit ?bit .
+       }""",
+    initNs=dict(rm=ROOM),
+    initBindings={Variable("?port") : thisDevice,
+                  Variable("?host") : thisHost,
+                  }):
     pin, bit = row
     log.info("watching for changes to %s", pin)
     dispatcher.connect(lambda obj: bits.set(int(bit), value=obj),
