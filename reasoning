@@ -31,12 +31,15 @@ def consider((s,p,o), delete=False):
     this is where the reasoning would go, taking all the known stmts
     and producing some more that the output modules would care about
     """
-    if (s,p,o) == (ROOM['bluetooth'], ROOM['senses'], ROOM['drewTreo']):
+    if (s,p) == (ROOM['bluetooth'], ROOM['senses']):
+        if o not in [ROOM['drewTreo'], ROOM['johnTreo'], ROOM['kelsiTreo']]:
+            return
+        
         pinValue = True
         if delete:
             pinValue = False
-        pin = URIRef("http://slash.bigasterisk.com/parport/3bc#pin2")
-        log.info(":bluetooth :senses %s => parport:pin2 :value %s" %
+        pin = URIRef("http://bang.bigasterisk.com/parport/parport0#pin0")
+        log.info(":bluetooth :senses %s => parport:pin0 :value %s" %
                 (o, pinValue))
         dispatcher.send((str(pin), str(ROOM['value']), None), obj=pinValue)
     
