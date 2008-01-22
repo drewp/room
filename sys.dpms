@@ -45,7 +45,10 @@ def focusedWindow(display):
     """takes a Xlib display object"""
     focus = display.get_input_focus()
     # http://www.sbin.org/doc/Xlib/chapt_12.html
-    res_class, res_name = focus.focus.get_wm_class()
+    cls = focus.focus.get_wm_class()
+    if cls is None:
+        raise ValueError("wm_class was None")
+    res_class, res_name = cls
     wm_name = focus.focus.get_wm_name()
     return res_class, res_name, wm_name
 
@@ -67,14 +70,17 @@ HERE = URIRef("http://%s/console" % socket.gethostname())
 while 1:
     g = Graph()
     g.bind('idle', IDLE)
-    res_class, res_name, wm_name = focusedWindow(display)
-    g.add((HERE, IDLE['focusClass'], Literal(res_class)))
-    g.add((HERE, IDLE['focusName'], Literal(res_name)))
-    g.add((HERE, IDLE['focusWindowName'], Literal(wm_name)))
+    try:
+        res_class, res_name, wm_name = focusedWindow(display)
+        g.add((HERE, IDLE['focusClass'], Literal(res_class)))
+        g.add((HERE, IDLE['focusName'], Literal(res_name)))
+        g.add((HERE, IDLE['focusWindowName'], Literal(wm_name.decode('ascii', 'ignore'))))
+    except ValueError:
+        pass
     
     g.add((HERE, IDLE['lastNonIdle'], Literal(time.time() - idleTime(dpy, root))))
     g.add((HERE, IDLE['power'], IDLE['power/%s' % dpmsPowerLevel(dpy)]))
 
     print g.serialize(format='n3')
     print
-    time.sleep(.5)
+    time.sleep(3)
