@@ -14,8 +14,10 @@ class Button(athena.LiveFragment):
         athena.LiveFragment.__init__(self)
         self.label = label
 
+    @athena.expose
     def getLabel(self):
         return unicode(self.label)
     
+    @athena.expose
     def onClick(self):
         print "clicked %s" % self.label

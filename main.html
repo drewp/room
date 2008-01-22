@@ -1,52 +1,52 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" 
       xmlns:n="http://nevow.com/ns/nevow/0.1">
   <head>
-    <style>
-  .sliderInput {
-        height:20;
-    width:30;
-        font-family : Arial, Helvetica, sans-serif;
-        font-size : 12px;
-  }
-    </style>
 
-    <script type="text/javascript" src="blueshoes/lib/LibCrossBrowser.js"></script>
-    <script type="text/javascript" src="blueshoes/lib/EventHandler.js"></script>
-    <script type="text/javascript" src="blueshoes/core/form/Bs_FormUtil.lib.js"></script>
-    <script type="text/javascript" src="blueshoes/components/slider/Bs_Slider.class.js"></script>
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.2.0/build/yahoo-dom-event/yahoo-dom-event.js"/>
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.2.0/build/dragdrop/dragdrop-min.js"/>
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.2.0/build/slider/slider-min.js"/>
+
+<!--
+    <link type="text/css" rel="stylesheet" href="http://yui.yahooapis.com/2.2.0/build/logger/assets/logger.css"/> 
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.2.0/build/logger/logger-min.js"></script> 
+    <script type="text/javascript"> 
+      var myLogReader = new YAHOO.widget.LogReader(); 
+      YAHOO.widget.Logger.enableBrowserConsole();
+    </script> 
+-->
+
     <script><!--
-
-function bsSliderChange(sliderObj, val, newPos){ 
-alert("silderchange");
-    server.handle('sliderChange', sliderObj.fieldName, val);
-}
 
 function setAnswer(self, foo) { 
     Divmod.Runtime.theRuntime.setNodeContent(self.node, foo);
 }
-
 // --></script>
+
     <n:invisible n:render="liveglue" />
+
   </head>
-  <body bgcolor="gray">
+  <body bgcolor="black" text="white">
 
     <div n:data="lightNames" n:render="sequence">
-      <p n:pattern="item" n:render="slider" />
+      <p n:pattern="item" n:render="slider"/>
     </div>
 
     <p/>
 
-    <div id="answer"/>
+    <n:invisible n:render="volumeSlider"/>
 
+
+    <div id="answer"/>
+<!--
     <div n:data="actions" n:render="sequence">
        <div n:pattern="item" n:render="button"><n:slot name="uri" /></div>
     </div>
-
-    <small>Javascript slider by <a href="http://www.blueshoes.org/en/javascript/slider/">BlueShoes</a></small>
+-->
 
     <p>current source: <a href="/widgets.js">widgets.js</a> <a href="/main.html">main.html</a> <a href="/serve">serve</a></p>
 
     <div n:render="introspection" />
 
+    
   </body>
 </html>

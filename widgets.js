@@ -12,30 +12,25 @@ RoomWidget.Slider.methods(
 
       self.callRemote('getName').addCallback(function setupSlider(name) {
     
-      self.slider = new Bs_Slider();
-      s = self.slider;
-      s.attachOnChange(function (sliderObj, val, newPos) {
-	  self.callRemote('sliderChange', val);
+	self.name = name
+	  self.width = 200;
+	self.slider = YAHOO.widget.Slider.getHorizSlider("athenaid:" + self.objectID + "-sliderbg", "athenaid:" + self.objectID + "-sliderthumb", 0, self.width); 
+
+	self.slider.subscribe("change", function (offset) {
+	  var val = offset / self.width;
+	  self.slider.lock()
+	  self.callRemote('sliderChange', val).addCallback(function (result) { self.slider.unlock(); });
+	});
       });
-      s.fieldName     = name;
-      s.width         = 49;
-      s.height        = 15;
-      s.minVal        = 0;
-      s.maxVal        = 1;
-      s.valueDefault  = 0;
-      s.valueInterval = 0.05;
-      s.imgDir = 'blueshoes/components/slider/img/';
-      s.setBackgroundImage('increase/bg.gif', 'no-repeat');
-      s.setSliderIcon('increase/knob.gif', 10, 21);
-      s.useInputField = 0;
-      s.draw(name);
-      });
+    
     },
     function setValue(self, val) {
+      console.log("server said to set value", self.name, val);
       self.slider.setValue(val);
-    });
+    }
+);
 
-function bsSliderChange(sliderObj, val, newPos){ 
-    server.handle('sliderChange', sliderObj.fieldName, val);
-}
+      //function bsSliderChange(sliderObj, val, newPos){ 
+      //    server.handle('sliderChange', sliderObj.fieldName, val);
+      //}
 
