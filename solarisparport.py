@@ -68,12 +68,20 @@ class LinuxParallel(object):
 
     def open(self):
         import parallel
-        self.port = parallel.Parallel(port=self.portNum)
+        try:
+            self.port = parallel.Parallel(port=self.portNum)
+        except IOError:
+            print "may need 'rmmod lp'"
+            raise
         self.device = self.port.device
 
     def write_data(self, value):
         self.port.setData(value)
-        
+
+    def getInBusy(self):
+        """matching the ieee1284.Port api would be awkward here, so
+        i'll just use a bit of the parallel.Parallel one too"""
+        return self.port.getInBusy()
         
 
 if __name__ == '__main__':

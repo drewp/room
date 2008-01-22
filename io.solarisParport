@@ -13,6 +13,7 @@ doesn't work right. see code below for a direct ioctl->driver version
 """
 from solarisparport import SolarisParport, LinuxParallel
 from twisted.internet import reactor
+from twisted.internet import task
 import hubclient
 import socket, logging
 from louie import dispatcher
@@ -68,8 +69,18 @@ for row in graph.query(
                   }):
     pin, bit = row
     log.info("watching for changes to %s", pin)
-    dispatcher.connect(lambda obj: bits.set(int(bit), value=obj),
+    dispatcher.connect(lambda obj, bit=bit: bits.set(int(bit), value=obj),
                        (str(pin), str(ROOM['value']), None), weak=False)
+
+
+prevBusy = [None]
+def inputs():
+    b = p.getInBusy()
+    if b != prevBusy[0]:
+        prevBusy[0] = b
+        log.info("heater on %s" % (not b))
+    #bits.set(0, value=b)
+task.LoopingCall(inputs).start(1)
 
 reactor.run()
 
