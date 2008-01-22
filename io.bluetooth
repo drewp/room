@@ -12,7 +12,7 @@ still don't have an access that wakes up the treo and then doesn't
 crash it. Maybe I could pretend to be a headset or something.
 """
 
-import bluetooth, logging
+import bluetooth, logging, time
 from twisted.internet import reactor, defer
 import hubclient
 from louie import dispatcher
@@ -30,7 +30,7 @@ class Disco(bluetooth.DeviceDiscoverer):
     # _bt.EVT_INQUIRY_RESULT_WITH_RSSI: results. see
     # /usr/share/pycentral/python-bluez/site-packages/bluetooth.py
     def device_discovered(self, address, device_class, name):
-        log.info("found: %s - %s (class 0x%X)" % (address, name, device_class))
+        log.debug("seeing: %s - %s (class 0x%X)" % (address, name, device_class))
         self.nearby.append((address, name))
 
     def inquiry_complete(self):
@@ -93,12 +93,20 @@ def loop(*args):
         lastDevs.clear()
         for address, name in newDevs:
             if address not in prevDevs:
+                matches = 0
                 for dev in devicesFromAddress(address):
                     log.info("found %s" % dev)
+                    matches += 1
                     dispatcher.send((str(ROOM['bluetooth']),
                                      str(ROOM['senses']),
                                      None),
                                     obj=str(dev))
+                if not matches:
+                    log.info("no matches for %s (%s)" % (name, address))
+                    f = open("bluetooth-stray-phones", "a")
+                    print >>f, "%s %s %s" % (time.time(), name, address)
+                    f.close()
+                    
             lostDevs.discard(address)
             lastDevs.add(address)
 
@@ -110,6 +118,7 @@ def loop(*args):
 
         reactor.callLater(0, loop)
     devs.addCallback(compare)
+    devs.addErrback(log.error)
 
 
 reactor.callLater(0, loop)
