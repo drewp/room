@@ -15,8 +15,10 @@ hubclient.connect()
 v = 0
 def loop():
     global v
-    dispatcher.send((str(PORT['pin0']), str(ROOM['value']), None), obj=v)
     v = not v
-    reactor.callLater(2, loop)
+    dispatcher.send((str(PORT['pin3']), str(ROOM['value']), None), obj=v)
+    if not v:
+        raise SystemExit
+    reactor.callLater(500, loop)
 loop()
 reactor.run()
