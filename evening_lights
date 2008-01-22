@@ -25,26 +25,34 @@ class EveningLights:
     # you have to get from motion=yes to the door within this time, or
     # else I'll think you're someone coming home
     MOTION_TO_DOOR_SECONDS = 30
+
+    # a second event this close to a first event is ignored (seconds)
+    DEBOUNCE = 10
     
     def __init__(self):
         dispatcher.connect(self.door, "door")
         dispatcher.connect(self.motion, "motion")
 
         self.lastSeenInside = 0
+        self.lastEvent = None
 
     def door(self, state):
         print "door", state
+        now = time.time()
         if state == "open":
-            if self.lastSeenInside > time.time() - self.MOTION_TO_DOOR_SECONDS:
+            if now - self.DEBOUNCE < self.lastEvent:
+                return
+            self.lastEvent = now
+            if self.lastSeenInside > now - self.MOTION_TO_DOOR_SECONDS:
                 print "bye"
                 say(randomLine("evening_lights.goodbye.lines"))
             else:
                 print "hello"
-                say(randomLine("evening_lights.hello.lines"))
                 if 18 <= datetime.datetime.now().hour <= 24:
                     RoomAction().fire_action("http://projects.bigasterisk.com/room/comeHome")
+                say(randomLine("evening_lights.hello.lines"))
                               
-            self.lastSeenInside = time.time()
+            self.lastSeenInside = now
                 
     def motion(self, state):
         print "motion", state
