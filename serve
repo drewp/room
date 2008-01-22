@@ -1,14 +1,20 @@
 """
 todo: alsa volumes, polyp routing, window without menu/status
+
+[18:11] <drewp> ln -s /usr/lib/python2.4/site-packages/Nevow-0.9.18-py2.4.egg/lib/python2.4/site-packages/nevow/js /usr/lib/python2.4/site-packages/Nevow-0.9.18-py2.4.egg/nevow
+[18:21] <drewp> and also ln -s /usr/lib/python2.4/site-packages/Nevow-0.9.18-py2.4.egg/lib/python2.4/site-packages/nevow/athena_private /usr/lib/python2.4/site-packages/Nevow-0.9.18-py2.4.egg/nevow
+
 """
-import time, logging
+import time, logging, os
 from twisted.python import util
 from twisted.internet import reactor, task
 from twisted.application import internet, service
+import nevow
 from nevow import appserver, inevow
 from nevow import loaders, rend, static, athena, tags as T
-
+print "nevow version", nevow.__version__
 import RDF
+import alsaaudio
 
 from simple import Button
 
@@ -21,25 +27,15 @@ import rdfaction
 
 class Slider(athena.LiveFragment):
     jsClass = u"RoomWidget.Slider"
-    docFactory = loaders.xmlstr("""
-   <div xmlns:nevow="http://nevow.com/ns/nevow/0.1"
-        xmlns:n="http://nevow.com/ns/nevow/0.1"
-        nevow:render="liveFragment">
-     <table border="1" cellpadding="10" bgcolor="lightgray">
-       <tr>
-         <td>
-           <div><n:attr name="id" n:render="name" /></div>
-           <br/><br/>
-           <div n:render="name" />
-         </td>
-       </tr>
-     </table></div>""")
-    allowedMethods = ['getName', 'sliderChange']
+    docFactory = loaders.xmlfile("slider.html")
+
     def __init__(self, lightName):
         athena.LiveFragment.__init__(self)
         self.lightName = lightName
 
+    @athena.expose
     def getName(self):
+        print "managed to call getName", self.lightName
         return unicode(self.lightName)
     
     def render_name(self, ctx, data):
@@ -48,7 +44,14 @@ class Slider(athena.LiveFragment):
     def setValue(self, val):
         self.callRemote('setValue', val)
 
+    @athena.expose
     def sliderChange(self, level):
+        if self.lightName == 'volume':
+            for chan in ['Wave', 'Wave Surround']:
+                mix = alsaaudio.Mixer(chan)
+                mix.setvolume(int(level * 100), alsaaudio.MIXER_CHANNEL_ALL)
+            return
+            
         level = float(level)
         roomAction.set_light(self.lightName, level)
 
@@ -72,8 +75,12 @@ class MainPage(athena.LivePage):
             u'RoomWidget' : util.sibpath(__file__, 'widgets.js'),
             u'SimpleWidget' : util.sibpath(__file__, 'simple.js'),})
 
+    def child_(self, ctx):
+        return MainPage()
+
     def childFactory(self, ctx, name):
-        if name in ['blueshoes']:
+        if name in ['blueshoes', 'clock.js', 'main.html', 'serve',
+                    'carpeSlider.js', 'carpeDefault.css']:
             return static.File(name)
         return athena.LivePage.childFactory(self, ctx, name)
 
@@ -81,6 +88,12 @@ class MainPage(athena.LivePage):
         s = Slider(data)
         s.page = self
         return ctx.tag[s]
+
+    def render_volumeSlider(self, ctx, data):
+        s = Slider("volume")
+        s.page = self
+        return ctx.tag[s]
+        
 
     def render_button(self, ctx, data):
         label = ctx.tag.children[0] # for plain text in the tag
@@ -115,19 +128,12 @@ class MainPage(athena.LivePage):
         """all controls that could be adjusted with a slider"""
 
 
-    def beforeRender(self, ctx):
-        inevow.IRequest(ctx).prePathURL = lambda: '/room/'
-
-class _MainPage(rend.Page):
-    def child_room(self, ctx):
-        return MainPage()
-    def childFactory(self, ctx, name):
-        if name in ['clock.js', 'main.html', 'serve']:
-            return static.File(name)
+#    def beforeRender(self, ctx):
+#        inevow.IRequest(ctx).prePathURL = lambda: '/room/'
 
 roomAction = rdfaction.RoomAction(withTwisted=True)
 
 application = service.Application('room')
-site = appserver.NevowSite(_MainPage())
+site = appserver.NevowSite(MainPage())
 webServer = internet.TCPServer(8082, site)
 webServer.setServiceParent(application)
