@@ -1,0 +1,55 @@
+"""
+normal accessing of the 'temperature' field on the sensors wasn't
+working. I always got '85' (the power-on reset value). owfs verison is 2.7p2
+
+http://sourceforge.net/mailarchive/forum.php?thread_name=fba87cb90612051724o705bfed0ub780325b915ed541%40mail.gmail.com&forum_name=owfs-developers
+
+Asking for simultaneous read seems to work, and I'm fine with doing that.
+
+see also:
+http://tomasz.korwel.net/2006/07/02/owfs-instalation-on-ubuntu-606/#comment-12246
+"""
+import time, logging
+from louie import dispatcher
+from twisted.internet.task import LoopingCall
+from twisted.internet import reactor
+import ow
+
+import hubclient
+from logsetup import commonlogsetup
+
+
+log = commonlogsetup(filename=None)
+log.setLevel(logging.INFO)
+
+ow.init('u')
+
+ow.owfs_put('/settings/units/temperature_scale', 'F')
+
+def getTemps():
+    ret = {}
+    ow.owfs_put('/uncached/simultaneous/temperature', '1')
+    for sens in ow.Sensor('/').sensors():
+        if sens.type == 'DS18S20':
+            try:
+                t = sens.temperature.strip()
+                if t == '185':
+                    log.warn("sensor %s says 185, probably wrong" % sens.address)
+                    continue
+            except ow.exUnknownSensor, e:
+                log.warn(e)
+                continue
+            ret[sens.address] = t
+    return ret
+
+hubclient.connect()
+
+def sendTemps():
+    temps = getTemps()
+    log.debug(temps)
+    dispatcher.send('temps', temps=temps)
+
+sendTemps()
+
+LoopingCall(sendTemps).start(120)
+reactor.run()
