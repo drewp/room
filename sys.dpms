@@ -67,6 +67,8 @@ root = xlib.XDefaultRootWindow(dpy)
 
 IDLE = Namespace("http://bigasterisk.com/computerIdleState/")
 HERE = URIRef("http://%s/console" % socket.gethostname())
+
+lastPower = None
 while 1:
     g = Graph()
     g.bind('idle', IDLE)
@@ -75,12 +77,20 @@ while 1:
         g.add((HERE, IDLE['focusClass'], Literal(res_class)))
         g.add((HERE, IDLE['focusName'], Literal(res_name)))
         g.add((HERE, IDLE['focusWindowName'], Literal(wm_name.decode('ascii', 'ignore'))))
-    except ValueError:
+    except (ValueError, AttributeError):
         pass
     
     g.add((HERE, IDLE['lastNonIdle'], Literal(time.time() - idleTime(dpy, root))))
-    g.add((HERE, IDLE['power'], IDLE['power/%s' % dpmsPowerLevel(dpy)]))
 
+    power = dpmsPowerLevel(dpy)
+    g.add((HERE, IDLE['power'], IDLE['power/%s' % power]))
     print g.serialize(format='n3')
     print
+
+    if power != lastPower:
+        f = open("log.dpms", "a")
+        print >>f, "%s %s" % (time.time(), power)
+        f.close()
+        lastPower = power
+    
     time.sleep(3)
