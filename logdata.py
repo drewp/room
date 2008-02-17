@@ -84,6 +84,10 @@ class Main(rend.Page):
         return static.File("flot")
     def child_www(self, ctx):
         return static.File("www")
+    def child_dpms(self, ctx):
+        import report.dpms
+        reload(report.dpms)
+        return report.dpms.Report()
     
 twisted.python.log.startLogging(sys.stdout)
 reactor.listenTCP(8007, NevowSite(Main()))
