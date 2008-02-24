@@ -6,11 +6,32 @@ see
 
 On ubuntu, python-xlib may need a patch:
   https://bugs.launchpad.net/ubuntu/+source/python-xlib/+bug/173414
+
+
+
+Traceback (most recent call last):
+  File "./sys.dpms", line 76, in <module>
+    res_class, res_name, wm_name = focusedWindow(display)
+  File "./sys.dpms", line 52, in focusedWindow
+    wm_name = focus.focus.get_wm_name()
+  File "/var/lib/python-support/python2.5/Xlib/xobject/drawable.py", line 638, in get_wm_name
+    d = self.get_full_property(Xatom.WM_NAME, Xatom.STRING)
+  File "/var/lib/python-support/python2.5/Xlib/xobject/drawable.py", line 460, in get_full_property
+    prop.bytes_after / 4 + 1)
+  File "/var/lib/python-support/python2.5/Xlib/xobject/drawable.py", line 444, in get_property
+    long_length = length)
+  File "/var/lib/python-support/python2.5/Xlib/protocol/rq.py", line 1430, in __init__
+    self.reply()
+  File "/var/lib/python-support/python2.5/Xlib/protocol/rq.py", line 1450, in reply
+    raise self._error
+Xlib.error.BadValue: <class 'Xlib.error.BadValue'>: code = 2, resource_id = 10, sequence_number = 19105, major_opcode = 20, minor_opcode = 0
+
+  
 """
 from rdflib.Graph import Graph
 from rdflib import Literal, Namespace, URIRef
 import Xlib.display
-import ctypes, os, time, socket
+import ctypes, os, time, socket, traceback
 
 xlib = ctypes.cdll.LoadLibrary('libX11.so')
 xext = ctypes.cdll.LoadLibrary('libXext.so')
@@ -77,13 +98,21 @@ while 1:
         g.add((HERE, IDLE['focusClass'], Literal(res_class)))
         g.add((HERE, IDLE['focusName'], Literal(res_name)))
         g.add((HERE, IDLE['focusWindowName'], Literal(wm_name.decode('ascii', 'ignore'))))
-    except (ValueError, AttributeError):
-        pass
-    
-    g.add((HERE, IDLE['lastNonIdle'], Literal(time.time() - idleTime(dpy, root))))
+    except KeyboardInterrupt: raise
+    except Exception, e: traceback.print_exc()
 
-    power = dpmsPowerLevel(dpy)
-    g.add((HERE, IDLE['power'], IDLE['power/%s' % power]))
+    try:
+        g.add((HERE, IDLE['lastNonIdle'],
+               Literal(time.time() - idleTime(dpy, root))))
+    except KeyboardInterrupt: raise
+    except Exception, e: traceback.print_exc()   
+
+    try:
+        power = dpmsPowerLevel(dpy)
+        g.add((HERE, IDLE['power'], IDLE['power/%s' % power]))
+    except KeyboardInterrupt: raise
+    except Exception, e: traceback.print_exc()   
+    
     print g.serialize(format='n3')
     print
 
