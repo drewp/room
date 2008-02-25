@@ -1,11 +1,13 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
   <head>
-    <title>House Temperatures</title>
+    <title>House Temperatures</title> 
+    <link rel="stylesheet" type="text/css" href="style.css" />
+
     <script src="http://static.simile.mit.edu/timeplot/api/1.0/timeplot-api.js" 
 	    type="text/javascript"></script>
-    <script src="www/timeplot-allow-missing-vals.js" type="text/javascript"></script>
-    <script src="www/timeplot-load-json.js" type="text/javascript"></script>
+    <script src="../www/timeplot-allow-missing-vals.js" type="text/javascript"></script>
+    <script src="../www/timeplot-load-json.js" type="text/javascript"></script>
 
     <script id="source" language="javascript" type="text/javascript">
 
@@ -48,7 +50,7 @@
 	  timeplot = Timeplot.create(document.getElementById("my-timeplot"), 
                                      plotInfo1);
 
-	  timeplot.loadJSON("temps", eventSource, function(json) {
+	  timeplot.loadJSON("../temps", eventSource, function(json) {
 	      return {columns:json.sensors,
 		      data:json.temps};
 	  });
@@ -74,9 +76,10 @@
 
     <div id="my-timeplot" class="timeplot" style="height: 500px;"></div>
 
-    <div>
-      <div><a href="tempchart">see this with flot</a></div>
-      <div><a href="tempchart2">see this with timeplot</a></div>
+   <div class="otherVersions">
+      <div><a href="flot.html">see this with flot</a></div>
+      <div><a href="timeplot.html">see this with timeplot</a></div>
+      <div><a href="table.html">see this as a table</a></div>
     </div>
 
   </body>

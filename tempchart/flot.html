@@ -2,25 +2,28 @@
 <html>
   <head>
     <title>House Temperatures</title>
-    <script language="javascript" type="text/javascript" src="flot/jquery.js"></script>  
-    <script language="javascript" type="text/javascript" src="flot/jquery.flot.js"></script>
-    <script language="javascript" type="text/javascript" src="flot/ostynscormtime.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+
+    <script language="javascript" type="text/javascript" src="../flot/jquery.js"></script>  
+    <script language="javascript" type="text/javascript" src="../flot/jquery.flot.js"></script>
+    <script language="javascript" type="text/javascript" src="../flot/ostynscormtime.js"></script>
   </head>
   <body>
     <h1>House Temperatures / flot</h1>
 
     <div id="placeholder" style="width:1000px;height:500px;"></div>
 
-    <div>
-      <div><a href="tempchart">see this with flot</a></div>
-      <div><a href="tempchart2">see this with timeplot</a></div>
+    <div class="otherVersions">
+      <div><a href="flot.html">see this with flot</a></div>
+      <div><a href="timeplot.html">see this with timeplot</a></div>
+      <div><a href="table.html">see this as a table</a></div>
     </div>
 
 
     <script id="source" language="javascript" type="text/javascript">
     
       $(document).ready(function(){
-	  $.getJSON("temps", function(data) {
+	  $.getJSON("../temps", function(data) {
 	      var plots = {};
 	      $.each(data.sensors,
 		     function(i, sens) {

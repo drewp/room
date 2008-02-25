@@ -1,110 +1,83 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <title>House Temperatures</title>
 
-
+    <link rel="stylesheet" type="text/css" href="ext-2.0.2/resources/css/ext-all.css" />
+    <link rel="stylesheet" type="text/css" href="ext-2.0.2/resources/css/xtheme-default.css" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
     <style type="text/css">
-      table {
-      border-collapse: collapse;
-      }
-      td,th {
-      border: 1px solid #ccc;
-      }
+      span.tz { color: #aaa; }
     </style>
 
-    <link rel="stylesheet" type="text/css" href="ext-2.0.1/resources/css/ext-all.css" />
-    <link rel="stylesheet" type="text/css" href="ext-2.0.1/resources/css/xtheme-default.css" />
-    <script type="text/javascript" src="ext-2.0.1/adapter/ext/ext-base.js"></script>
-    <script type="text/javascript" src="ext-2.0.1/ext-all.js"></script>
-    <link rel="stylesheet" type="text/css" href="grid-examples.css" />
-
+    <script type="text/javascript" src="ext-2.0.2/adapter/ext/ext-base.js"></script>
+    <script type="text/javascript" src="ext-2.0.2/ext-all.js"></script>
 
     <script language="javascript" type="text/javascript">
+      var mystore;
+      Ext.onReady(function(){
+	  Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
-Ext.onReady(function(){
+	  function parseIso8601FractionSeconds(s) {
+	      // assumes negative timezone offset
+	      var lr = s.split('.')
+	      var nofrac = lr[0] + '-' + lr[1].split('-')[1];
+	      return Date.parseDate(nofrac, 'c'); 
+	  }
 
-    Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
+	  var store = new Ext.data.JsonStore({
+	      url: 'http://bigasterisk.com/magma/temp/temps',
+	      root: 'temps',
+	      fields: [
+		  {name: "104F718D00080038", type: "float"},
+		  {name: "1014958D0008002B", type: "float"},
+		  {name: "10CB6CBE0008005E", type: "float"},
+		  {name: "109AA2BE000800C7", type: "float"},
+		  {name: "time", type: "date", convert: parseIso8601FractionSeconds}
+	      ],
+	      sortInfo: {field: "time", direction: "DESC"}
+	  });
 
-    var myData = [
-        ['3m Co',71.72,0.02,0.03,'9/1 12:00am'],
-        ['Alcoa Inc',29.01,0.42,1.47,'9/1 12:00am'],
-        ['Altria Group Inc',83.81,0.28,0.34,'9/1 12:00am'],
-        ['American Express Company',52.55,0.01,0.02,'9/1 12:00am'],
-        ['American International Group, Inc.',64.13,0.31,0.49,'9/1 12:00am'],
-        ['AT&T Inc.',31.61,-0.48,-1.54,'9/1 12:00am'],
-        ['Boeing Co.',75.43,0.53,0.71,'9/1 12:00am'],
-        ['Caterpillar Inc.',67.27,0.92,1.39,'9/1 12:00am'],
-        ['Citigroup, Inc.',49.37,0.02,0.04,'9/1 12:00am'],
-    ];
+	  store.addListener('load', function () { 
+	      document.getElementById('temps-loading').setAttribute("style", "display: none") });
+	  store.load();
 
-    // create the data store
-    var store = new Ext.data.SimpleStore({
-        fields: [
-           {name: 'time'},
-           {name: 't1', type: 'float'}
-        ]
-    });
-    store.loadData(myData);
+	  var grid = new Ext.grid.GridPanel({
+              store: store,
+              columns: [
+		  {id:'time',header: "Time", sortable: true, dataIndex: 'time', 
+		   renderer: Ext.util.Format.dateRenderer(
+		       'Y-m-d H:i <\\sp\\a\\n \\c\\l\\a\\s\\s="\\t\\z">P</\\sp\\a\\n>')},
+		  {header: "Dn ceil", dataIndex: '104F718D00080038'},
+		  {header: "Dn floor", dataIndex: "1014958D0008002B"},
+		  {header: "BR", dataIndex: "10CB6CBE0008005E"},
+		  {header: "LR", dataIndex: "109AA2BE000800C7"}
+              ],
+              stripeRows: true,
+              width:800, height:500,
+              title:'House Temperatures (&#8457;)'
+	  });
 
-
-var store = new Ext.data.JsonStore({
-    url: 'http://bigasterisk.com/magma/temp/temps',
-    root: 'temps',
-    fields: [
-{name: "104F718D00080038", type: "float"},
-{name: "1014958D0008002B", type: "float"},
-{name: "10CB6CBE0008005E", type: "float"},
-{name: "109AA2BE000800C7", type: "float"},
-{name: "time", type: "date"}
-]});
-
-
-    // create the Grid
-    var grid = new Ext.grid.GridPanel({
-        store: store,
-        columns: [
-            {id:'time',header: "Time", sortable: true, dataIndex: 'time'},
-            {header: "Dn floor", dataIndex: 't1'}
-
-        ],
-        stripeRows: true,
-        autoExpandColumn: 'time',
-        height:350,
-        width:600,
-        title:'Array Grid'
-    });
-
-    grid.render('grid-example');
-
-    grid.getSelectionModel().selectFirstRow();
-});
-
+	  grid.render('grid-temps');
+      });
     </script>
-
 
   </head>
   <body>
     <h1>House Temperatures / table</h1>
 
-    <div id="grid-example"></div>
+    <div id="grid-temps">
+      <div id="temps-loading" class="loading-indicator" 
+	   style="z-index: 10; position: absolute; left: 50px; top: 100px;">
+	<img src="ext-2.0.2/resources/extanim32.gif" width="32" height="32" style="margin-right:8px;" align="absmiddle"/>
+	Loading...
+      </div>
+    </div>
 
-    <table>
-      <tr>
-	<th>Time</th><th>Dn floor</th><th>Dn ceil</th><th>BR floor</th><th>LR</th>
-      </tr>
-      <tr><td>2008-05-03T15:55:03-08:00</td><td>55.1</td><td>55.1</td><td>55.1</td><td>55.1</td></tr>
-      <tr><td>2008-05-03T15:55:03-08:00</td><td>55.1</td><td>55.1</td><td>55.1</td><td>55.1</td></tr>
-      <tr><td>2008-05-03T15:55:03-08:00</td><td>55.1</td><td>55.1</td><td>55.1</td><td>55.1</td></tr>
-      <tr><td>2008-05-03T15:55:03-08:00</td><td>55.1</td><td>55.1</td><td>55.1</td><td>55.1</td></tr>
-      <tr><td>2008-05-03T15:55:03-08:00</td><td>55.1</td><td>55.1</td><td>55.1</td><td>55.1</td></tr>
-
-      </table>
-
-
-    <div>
-      <div><a href="tempchart">see this with flot</a></div>
-      <div><a href="tempchart2">see this with timeplot</a></div>
+    <div class="otherVersions">
+      <div><a href="flot.html">see this with flot</a></div>
+      <div><a href="timeplot.html">see this with timeplot</a></div>
+      <div><a href="table.html">see this as a table</a></div>
     </div>
 
   </body>

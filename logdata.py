@@ -77,9 +77,7 @@ class Main(rend.Page):
         return Ret()
 
     def child_tempchart(self, ctx):
-        return static.File("tempchart/tempchart.html")
-    def child_tempchart2(self, ctx):
-        return static.File("tempchart/tempchart2.html")
+        return static.File("tempchart")
     def child_flot(self, ctx):
         return static.File("flot")
     def child_www(self, ctx):
@@ -90,7 +88,7 @@ class Main(rend.Page):
         return report.dpms.Report()
     
 twisted.python.log.startLogging(sys.stdout)
-reactor.listenTCP(8007, NevowSite(Main()))
+reactor.listenTCP(8007 + (len(sys.argv) > 1), NevowSite(Main()))
 
 dispatcher.connect(dataIn, 'temps')
 
