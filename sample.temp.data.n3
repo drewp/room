@@ -1,0 +1,44 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sumo: <http://reliant.teknowledge.com/DAML/SUMO.owl#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+@prefix : <http://bigasterisk.com/magma/measurement#> .
+@prefix rdf: 
+@prefix dpms: <http://bigasterisk.com/computerIdleState/power#> .
+@prefix door: <http://bigasterisk.com/magma/doorState#> .
+@prefix meas: <http://bigasterisk.com/magma/measurementPoint/> .
+@prefix s: <http://bigasterisk.com/magma/sensor/> .
+@prefix onewireid: <http://bigasterisk.com/magma/onewire/device/> .
+#@prefix sumo: <http://sigma.ontologyportal.org:4010/sigma/TreeView.jsp?kb=SUMO&simple=null&term=> .
+
+<> rdfs:seeAlso 
+  <www.ee.memphis.edu/cas/publications/ica3194.pdf>,
+  <http://mail.opengeospatial.org/pipermail/sensorml/2008-February/000379.html>.
+
+<www.ee.memphis.edu/cas/publications/ica3194.pdf> 
+  rdfs:label "Building a Sensor Ontology: A Practical Approach Leveraging ISO and OGC Models" .
+
+<http://mail.opengeospatial.org/pipermail/sensorml/2008-February/000379.html> 
+  rdfs:comment "Did anybody convert SensorML scemas to RDF or OWL format ?" .
+
+s:lr1 :sensor onewireid:1014958D0008002B .
+
+meas:lr a :MeasurementPoint;   
+  :measurement
+    [:sensor s:lr1; dc:created "2008-03-08T16:30:00-07:00"^^xsd:dateTime; rdf:value "70.5875"^^sumo:FahrenheitDegree],
+    [:sensor s:lr1; dc:created "2008-03-08T16:28:00-07:00"^^xsd:dateTime; rdf:value "69.8"^^sumo:FahrenheitDegree] .
+
+s:dpmsMon rdfs:label "sys.dpms software polling" .
+meas:dashScreen a :MeasurementPoint;
+  :measurement
+    [:sensor s:dpmsMon; dc:created "2008-03-08T16:28:00-07:00"^^xsd:dateTime; rdf:value dpms:off],
+    [:sensor s:dpmsMon; dc:created "2008-03-08T17:00:00-07:00"^^xsd:dateTime; rdf:value dpms:on] .
+
+
+s:downDoorReed rdfs:label "reed switch above door" .
+meas:downDoorOpen a :MeasurementPoint .
+
+leave out measurepoint, just record sensor+value?
+[is :measurement of meas:downDoorOpen; :sensor s:downDoorReed; dc:created "2008-03-08T16:28:00-07:00"^^xsd:dateTime; rdf:value door:open] .
+
