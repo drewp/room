@@ -2,7 +2,7 @@
 from __future__ import division
 import time
 from nevow import tags as T, flat, rend, loaders
-from datetime import date, datetime
+from datetime import date, datetime, time as datetime_time, timedelta
 
 class Events(object):
     """collection of timeseries events"""
@@ -53,7 +53,8 @@ class Report(rend.Page):
         T.head[
         T.link(rel="stylesheet", href="../www/hours.css", type='text/css')
         ],
-        T.body[T.directive("timeline")]
+        T.body[T.directive("timeline"),
+               T.directive("table")]
         ])
 
     def render_timeline(self, ctx, data):
@@ -131,47 +132,117 @@ class Report(rend.Page):
 
         events = dpmsEvents()
 
-        print events
+        rows = {} # (mintime,maxtime) : bands
+        startHour = 7
+        for r in dayRanges(date(2008,1,22), date(2008, 2, 12),
+                           startHour=startHour):
+            rows[r] = []
 
+        for ev in events.tuples:
+            for r in rows:
+                i = intersect((ev[0], ev[1]), (r[0], r[1]))
+                if i is not None:
+                    rows[r].append((i[0], i[1], ev[2]))
             
-
-        rows = []
-
         def clearPixel(w=1,h=1):
             return T.img(src="../www/clear.png", width=w, height=h)
 
-        def makeTick(startSec, daySec, state, style='', class_=''):
-            widthSec = (daySec - startSec)
-            color = dict(Off='#555', On='#ffa', Suspend='#cc8',
-                         Standby='green').get(state, 'white')
+        def makeTick(startSec, endSec, state, style='', class_=''):
+            widthSec = (endSec - startSec)
+            color = dict(Off='#555', On='#ffa', Suspend='#775',
+                         Standby='#dca').get(state, 'white')
                      
             return T.div(class_="abs %s" % class_,
-                         style="background: %s; left: %.2f%%; width: %.2f%%; %s" % (
+                     style="background: %s; left: %.2f%%; width: %.2f%%; %s" % (
                 color,
                 100 * startSec / 86400,
                 100 * widthSec / 86400,
                 style))[state]
-        
-        for d, events in sorted(events.items()):
+
+        trs = []
+        for row, bands in sorted(rows.items()):
             ticks = []
 
-            for (startSec, endSec, state) in events:
-                ticks.append(makeTick(startSec, endSec, state))
+            for (startSec, endSec, state) in sorted(bands):
+                ticks.append(makeTick(startSec - row[0], endSec - row[0],
+                                      state['state']))
 
             for hr in range(24):
-                ticks.append(makeTick(3600 * hr, 3600 * hr + 3200, str(hr),
+                ticks.append(makeTick(3600 * hr, 3600 * hr + 3200,
+                                      str((hr + startHour) % 24),
                                       class_='hour'))
-
+                
+            d = date.fromtimestamp(row[0])
             rowColor = "#e8e8e8"
             if d.weekday() in (5,6):
                 rowColor = "#e8cccc"
-            rows.append(T.tr[
+            trs.append(T.tr[
                 T.td(style="background: %s;" % rowColor)[
-                  T.div(class_="dayLabel")[d.strftime("%A")[:2], " ", str(d)]],
+                  T.div(class_="dayLabel")["%s %s" %
+                                           (d.strftime("%A")[:2], str(d))]],
                 T.td(width="100%", style="background: %s;" % rowColor)[
                   T.div(class_="tdContents")[ticks]],
                 ])
         
-        return T.table(width="100%")[rows]
+        return T.table(width="100%")[trs]
     
 
+def dayRanges(d1, d2, periodHours=24, startHour=0):
+    """
+    list of (start,end) in unix seconds that covers N-hour periods
+    aligned to startHour in your local time zone
+
+    >>> from pprint import pprint
+    >>> rgs = dayRanges(date(2008,1,5), date(2008,1,7), startHour=7)
+    >>> pprint([[str(datetime.fromtimestamp(x)) for x in r] for r in rgs])
+    [['2008-01-05 07:00:00', '2008-01-06 06:59:59'],
+     ['2008-01-06 07:00:00', '2008-01-07 06:59:59'],
+     ['2008-01-07 07:00:00', '2008-01-08 06:59:59']]
+    """
+    ret = []
+    t1 = datetime.combine(d1, datetime_time(startHour, 0, 0))
+    while t1 < datetime.combine(d2, datetime_time(23,59,59)):
+        t2 = t1 + timedelta(hours=periodHours) - timedelta.resolution
+        ret.append((time.mktime(t1.timetuple()),
+                    time.mktime(t2.timetuple())))
+        t1 = t1 + timedelta(hours=periodHours)
+    return ret
+
+def intersect(range1, range2):
+    """return None, or a new (start,end) range for the intersection
+    clipped to range2. doesn't return start==end (maybe unless range2
+    was like that)
+
+    >>> intersect((1, 5), (10, 20))
+    >>> intersect((1, 10), (10, 20))
+    >>> intersect((1, 15), (10, 20))
+    (10, 15)
+    >>> intersect((10, 15), (10, 20))
+    (10, 15)
+    >>> intersect((12, 18), (10, 20))
+    (12, 18)
+    >>> intersect((5, 25), (10, 20))
+    (10, 20)
+    >>> intersect((12, 20), (10, 20))
+    (12, 20)
+    >>> intersect((15, 25), (10, 20))
+    (15, 20)
+    >>> intersect((20, 25), (10, 20))
+    >>> intersect((21, 25), (10, 20))
+    """
+    x1,x2 = range1
+    y1,y2 = range2
+    if x1 >= y1 and x2 <= y2:
+        return (x1, x2)
+    if y1 < x2 <= y2:
+        return (y1, x2)
+    if y1 <= x1 < y2:
+        return (x1, y2)
+    if x1 <= y1 and x2 >= y2:
+        return (y1, y2)
+    return None
+
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()

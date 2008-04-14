@@ -1,0 +1,62 @@
+* {
+  font-family: sans-serif;
+}
+table {
+  border-collapse: collapse;
+}
+table, tr, td {
+  border: 1px solid #ccc;
+  padding: 0;
+  margin: 0;
+}
+div.tdContents {
+  position: relative;
+  /* border: 1px solid green; */
+  height: 1.5em;
+}
+div.abs {
+  display: inline;
+  position: absolute;
+  overflow: hidden;
+  height: 100%;
+}
+div.hourHead {
+  background: #ccc;
+  top: 0;
+}
+div.hour {
+  opacity: .1;
+  border-left: 1px solid black;
+}
+div.dayLabel {
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.state { 
+  border: 0px solid black;
+}
+.rect-state-Off     { opacity: .5; background: #555 } 
+.rect-state-On      { opacity: .5; background: #ffa }
+.rect-state-Suspend { opacity: .5; background: #cc8 }
+.rect-state-Standby { opacity: .5; background: green }
+
+.timeline-line { 
+  border-top: 2px solid #aaf; 
+  margin-top: 0px;  
+}
+
+.timeline-timeLabel { 
+  border-left: 1px solid #aaf; 
+  padding-top: 5px;
+}
+.timeline-outer { 
+  height: 120px; 
+  width: 100%; 
+  position: relative; 
+  overflow: scroll;
+}
+.date { 
+ color: #6b6;
+ font-style: italic;
+ }
