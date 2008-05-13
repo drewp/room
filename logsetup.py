@@ -15,7 +15,7 @@ def commonlogsetup(excludechannels=[], filename="log"):
 
     handlers = [logging.StreamHandler()]
     if filename is not None:
-        handlers.append(logging.FileHandler(filename))
+        handlers.append(logging.FileHandler(filename)) # flushing is not great on this one. Not sure where to turn that up
     for h in handlers:
         h.setFormatter(logging.Formatter("%(created)s %(asctime)s %(levelname)-5s %(filename)s:%(lineno)d: %(message)s"))
         h.addFilter(myfilter())

@@ -15,7 +15,7 @@ from solarisparport import SolarisParport, LinuxParallel
 from twisted.internet import reactor
 from twisted.internet import task
 import hubclient
-import socket, logging
+import socket, logging, os
 from louie import dispatcher
 from rdflib.Graph import Graph
 from rdflib import Literal, Variable, Namespace
@@ -24,8 +24,7 @@ from BitVector import BitVector
 ROOM = Namespace("http://projects.bigasterisk.com/room/")
 
 from logsetup import commonlogsetup
-log = commonlogsetup(filename=None)
-log.setLevel(logging.INFO)
+# can't setup log yet- need to open ports as root first
 
 class ParportBits(object):
     """allow the bits on the parallel port to be set individually"""
@@ -47,6 +46,10 @@ class ParportBits(object):
 #port = 0x3bc # only supporting one port per process for now
 p = LinuxParallel() # SolarisParport()
 bits = ParportBits(p)
+os.seteuid(501) # back to drewp for logging
+
+log = commonlogsetup(filename="log.parport")
+log.setLevel(logging.INFO)
 
 hubclient.connect()
 dispatcher.send("parport ready for messages")
