@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 normal accessing of the 'temperature' field on the sensors wasn't
 working. I always got '85' (the power-on reset value). owfs verison is 2.7p2
@@ -9,7 +10,7 @@ Asking for simultaneous read seems to work, and I'm fine with doing that.
 see also:
 http://tomasz.korwel.net/2006/07/02/owfs-instalation-on-ubuntu-606/#comment-12246
 """
-import time, logging
+import time, logging, traceback
 from louie import dispatcher
 from twisted.internet.task import LoopingCall
 from twisted.internet import reactor
@@ -28,18 +29,23 @@ ow.owfs_put('/settings/units/temperature_scale', 'F')
 
 def getTemps():
     ret = {}
-    ow.owfs_put('/uncached/simultaneous/temperature', '1')
-    for sens in ow.Sensor('/').sensors():
-        if sens.type == 'DS18S20':
-            try:
-                t = sens.temperature.strip()
-                if t == '185':
-                    log.warn("sensor %s says 185, probably wrong" % sens.address)
+    try:
+        ow.owfs_put('/uncached/simultaneous/temperature', '1')
+        for sens in ow.Sensor('/').sensors():
+            if sens.type == 'DS18S20':
+                try:
+                    t = sens.temperature.strip()
+                    if t == '185':
+                        log.warn("sensor %s says 185, probably wrong" % sens.address)
+                        continue
+                except ow.exUnknownSensor, e:
+                    log.warn(e)
                     continue
-            except ow.exUnknownSensor, e:
-                log.warn(e)
-                continue
-            ret[sens.address] = t
+                ret[sens.address] = t
+    except KeyboardInterrupt: raise
+    except Exception, e:
+        traceback.print_exc()
+        print "returning %r" % ret
     return ret
 
 hubclient.connect()
