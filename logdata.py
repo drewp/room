@@ -3,14 +3,18 @@
 listen for some signals and log them in files
 """
 
+import sys
+# from /usr/share/doc/python-xml/changelog.Debian.gz, to make
+# xml.utils.iso8601 available on ubuntu 8.04+
+sys.path.append('/usr/lib/python%s/site-packages/oldxml' % sys.version[:3])
+from xml.utils import iso8601
+
 import logging, time
 from louie import dispatcher
 from twisted.internet import reactor
-import sys
 import twisted.python.log
 from nevow.appserver import NevowSite
 from nevow import rend, loaders, json, static, tags as T, inevow
-from xml.utils import iso8601
 from email.utils import formatdate
 
 import hubclient
@@ -31,7 +35,13 @@ def dataIn(**kw):
         typed = dict([(k.decode('ascii'), float(v))
                       for k,v in kw['temps'].items()])
         typed[u'time'] = iso8601.ctime(now).decode('ascii')
+
+        #appendToLog()
+        
         history[:] = history[-500:] + [typed]
+
+def appendToLog(t, sensor, value):
+    pass
 
 class Main(rend.Page):
     docFactory = loaders.xmlstr("<p>logdata server</p>")
@@ -39,7 +49,7 @@ class Main(rend.Page):
         class Ret(rend.Page):
             def renderHTTP(self, ctx):
                 sensors = set()
-                for row in history[::10]: # hope we hit all the keys
+                for row in (history[:10] + history[::10]): # hope we hit all the keys
                     sensors.update(row.keys())
                 sensors.discard(u'time')
                 sensors = sorted(sensors)
