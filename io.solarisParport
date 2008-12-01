@@ -3,13 +3,17 @@
 """
 output on a parallel port under solaris
 
-uses pypi: Louie, BitVector, rdflib, python-parallel
+uses pypi: Louie, BitVector, rdflib
+ubuntu package: python-parallel
 
 follow http://www.captain.at/programming/solaris/ to install
 http://sourceforge.net/projects/libieee1284
 
 you could do 'make install' to install the python module, but it
 doesn't work right. see code below for a direct ioctl->driver version
+
+put 'blacklist lp' in /etc/modprobe.d/blacklist
+
 """
 from solarisparport import SolarisParport, LinuxParallel
 from twisted.internet import reactor

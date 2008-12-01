@@ -7,8 +7,16 @@ http://sourceforge.net/mailarchive/forum.php?thread_name=fba87cb90612051724o705b
 
 Asking for simultaneous read seems to work, and I'm fine with doing that.
 
-see also:
+the stock modules for onewire are bad; they will take all your CPU. to
+turn them off, see:
 http://tomasz.korwel.net/2006/07/02/owfs-instalation-on-ubuntu-606/#comment-12246
+
+For the python 'ow' package, get
+http://downloads.sourceforge.net/owfs/owfs-2.7p7.tar.gz?modtime=1222687523&big_mirror=0
+or similar. Install the libusb-dev and swig packages first for usb and
+python support.
+
+
 """
 import time, logging, traceback
 from louie import dispatcher
@@ -32,9 +40,11 @@ def getTemps():
     try:
         ow.owfs_put('/uncached/simultaneous/temperature', '1')
         for sens in ow.Sensor('/').sensors():
+            log.debug("found sensor %r" % sens)
             if sens.type == 'DS18S20':
                 try:
                     t = sens.temperature.strip()
+                    log.debug("got temp %r" % t)
                     if t == '185':
                         log.warn("sensor %s says 185, probably wrong" % sens.address)
                         continue
@@ -46,6 +56,7 @@ def getTemps():
     except Exception, e:
         traceback.print_exc()
         print "returning %r" % ret
+    log.debug("getTemps -> %r" % ret)
     return ret
 
 hubclient.connect()

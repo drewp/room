@@ -10,6 +10,9 @@ I can use 'hcitool cc <addr> && hcitool rssi <addr>' to wake it up and
 get its signal strength, but that pattern crashes my treo easily. I
 still don't have an access that wakes up the treo and then doesn't
 crash it. Maybe I could pretend to be a headset or something.
+
+depends on ubuntu package: python-bluez
+
 """
 
 import bluetooth, logging, time
