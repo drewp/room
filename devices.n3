@@ -39,4 +39,4 @@ bangport:pin3 a :ParportPin;
 # the sources, and draw their conclusions on that
 
 
-onewire:10CB6CBE0008005E rdfs:label "bedroom" .
+onewire:addr10CB6CBE0008005E rdfs:label "bedroom" .
