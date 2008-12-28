@@ -15,7 +15,7 @@ ROOM = Namespace("http://projects.bigasterisk.com/room/")
 
 hubclient.connect()
 
-os.system("play %s &" % sibpath(__file__, "sonar.wav"))
+os.system("ogg123 /usr/share/sounds/KDE_Chimes_3.ogg &")
 reactor.callLater(0, dispatcher.send, (str(PORT['pin0']), str(ROOM['value']), None), obj=1)
 reactor.callLater(5, dispatcher.send, (str(PORT['pin0']), str(ROOM['value']), None), obj=0)
 reactor.callLater(5.5, reactor.stop)
