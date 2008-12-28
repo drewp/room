@@ -1,0 +1,21 @@
+#!/usr/bin/python
+
+import os
+from twisted.internet import reactor
+from twisted.python.util import sibpath
+import hubclient
+import time, socket
+from louie import dispatcher
+from rdflib.Graph import Graph
+from rdflib import Literal, Variable, Namespace
+
+PORT = Namespace("http://bang.bigasterisk.com/parport/parport0#")
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
+
+hubclient.connect()
+
+reactor.callLater(0, dispatcher.send, (str(PORT['pin3']), str(ROOM['value']), None), obj=1)
+reactor.callLater(10 * 60, dispatcher.send, (str(PORT['pin3']), str(ROOM['value']), None), obj=0)
+reactor.callLater(10 * 60 + 5, reactor.stop)
+
+reactor.run()
