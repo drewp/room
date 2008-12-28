@@ -1,0 +1,27 @@
+#!/usr/bin/python
+"""
+talk to Insteon PowerLinc
+"""
+
+import os, logging
+import hubclient
+from louie import dispatcher
+from logsetup import commonlogsetup
+from twisted.internet import reactor
+
+log = commonlogsetup(filename=None)
+
+def send(device, level):
+    # until i get a twisted/serial version of this:
+    cmd = '/home/drewp/plmtools-0.0.3-r1/insteon %s on %s' % (device, level)
+    log.debug("run: %s", cmd)
+    os.system(cmd)
+
+log.setLevel(logging.DEBUG)
+hubclient.connect()
+
+dispatcher.connect(send, 'insteon send')
+log.info("Listening for 'insteon send' signals")
+
+reactor.run()
+
