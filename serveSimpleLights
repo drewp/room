@@ -1,0 +1,33 @@
+#!/usr/bin/python
+"""
+no commands, just a web UI to send insteon commands
+"""
+import sys
+from twisted.internet import reactor
+import hubclient
+from louie import dispatcher
+from twisted.python import log
+from nevow.appserver import NevowSite
+from nevow import rend, static, loaders, tags as T, inevow, json, url
+
+class Main(rend.Page):
+    docFactory = loaders.xmlfile("serveSimpleLights.html")
+    def child_setLight(self, ctx):
+        request = inevow.IRequest(ctx)
+        
+        if request.method.lower() != "post":
+            raise ValueError("addCommand only takes POST, not %s" %
+                             request.method)
+
+        request.content.seek(0)
+        args = dict(url.unquerify(request.content.read()))
+
+        dispatcher.send('insteon send',
+                        device=args['device'], level=float(args['level']))
+        return url.here.parent()
+
+hubclient.connect()
+log.startLogging(sys.stdout)
+
+reactor.listenTCP(9015, NevowSite(Main()))
+reactor.run()
