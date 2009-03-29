@@ -16,6 +16,8 @@ http://downloads.sourceforge.net/owfs/owfs-2.7p7.tar.gz?modtime=1222687523&big_m
 or similar. Install the libusb-dev and swig packages first for usb and
 python support.
 
+2009-02-21 i'm now on ow.__version__ = '2.7p16-1.15'
+./configure --disable-owtcl --disable-owperl --disable-owphp --disable-ha7 --disable-ownet --disable-ownetlib --disable-owserver --disable-parport
 
 """
 import time, logging, traceback
@@ -27,46 +29,92 @@ import ow
 import hubclient
 from logsetup import commonlogsetup
 
-
 log = commonlogsetup(filename=None)
 log.setLevel(logging.INFO)
 
-ow.init('u')
+class TempReader(object):
+    def __init__(self):
+        self.expectedSensors = 4
+        self.ow = None
+        self.initOnewire()
 
-ow.owfs_put('/settings/units/temperature_scale', 'F')
+    def initOnewire(self):
+        """open usb connection and configure ow lib. Run this again if
+        things get corrupt"""
+        ow.init('u')
+        # this might PRINT a 'Could not open the USB adapter.' message, but I
+        # don't know how to trap it
 
-def getTemps():
-    ret = {}
-    try:
+        ow.owfs_put('/settings/units/temperature_scale', 'F')
+
+    def getCompleteTemps(self, maxTime=120):
+        ret = {}
+        tries = 0
+        now = time.time()
+        giveUp = now + maxTime
+
+        self.requestTemps()
+        sensors = set(self.allSensors())
+        
+        while now < giveUp:
+            tries += 1
+            ret.update(self.getTemps(sensors - set(ret.keys())))
+
+            if len(ret) >= self.expectedSensors:
+                log.info("after %s tries, temps=%s" % (tries, ret))
+                return dict([(s.address,val) for s, val in ret.items()])
+
+            log.debug("..only have %s measurements; still trying for %d secs" %
+                      (len(ret), giveUp - now))
+            self.initOnewire()
+            self.requestTemps()
+            time.sleep(.5)
+            now = time.time()
+            
+        log.warn("giving up after %s secs, only got %s measurements" %
+                 (maxTime, len(ret)))
+        return ret
+
+    def allSensors(self):
+        return ow.Sensor('/').sensors()
+
+    def requestTemps(self):
         ow.owfs_put('/uncached/simultaneous/temperature', '1')
-        for sens in ow.Sensor('/').sensors():
-            log.debug("found sensor %r" % sens)
-            if sens.type == 'DS18S20':
+
+    def getTemps(self, sensors):
+        ret = {}
+        try:
+            for sens in sensors:
+                log.debug("found sensor %r" % sens)
+                if sens.type != 'DS18S20':
+                    continue
                 try:
                     t = sens.temperature.strip()
                     log.debug("got temp %r" % t)
                     if t == '185':
-                        log.warn("sensor %s says 185, probably wrong" % sens.address)
+                        log.debug("sensor %s says 185, probably wrong" %
+                                 sens.address)
                         continue
                 except ow.exUnknownSensor, e:
                     log.warn(e)
                     continue
-                ret[sens.address] = t
-    except KeyboardInterrupt: raise
-    except Exception, e:
-        traceback.print_exc()
-        print "returning %r" % ret
-    log.debug("getTemps -> %r" % ret)
-    return ret
-
+                ret[sens] = t
+        except KeyboardInterrupt: raise
+        except Exception, e:
+            traceback.print_exc()
+        return ret
+    
 hubclient.connect()
-
+reader = TempReader()
 def sendTemps():
-    temps = getTemps()
-    log.debug(temps)
+    try:
+        temps = reader.getCompleteTemps(maxTime=30)
+    except ValueError, e:
+        reactor.stop()
+        raise
     dispatcher.send('temps', temps=temps)
 
 sendTemps()
 
-LoopingCall(sendTemps).start(120)
+LoopingCall(sendTemps).start(interval=120)
 reactor.run()
