@@ -109,7 +109,7 @@ reader = TempReader()
 def sendTemps():
     try:
         temps = reader.getCompleteTemps(maxTime=30)
-    except ValueError, e:
+    except Exception, e:
         reactor.stop()
         raise
     dispatcher.send('temps', temps=temps)
