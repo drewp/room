@@ -46,11 +46,12 @@
               store: store,
               columns: [
 		  {id:'time',header: "Time", sortable: true, dataIndex: 'time', 
+		   width:120,
 		   renderer: Ext.util.Format.dateRenderer(
 		       'Y-m-d H:i <\\sp\\a\\n \\c\\l\\a\\s\\s="\\t\\z">P</\\sp\\a\\n>')},
 		  {header: "Dn ceil", dataIndex: '104F718D00080038'},
 		  {header: "Dn floor", dataIndex: "1014958D0008002B"},
-		  {header: "BR", dataIndex: "10CB6CBE0008005E"},
+		  {header: "BR", dataIndex: "10CB6CBE0008005E"}, // i'm pretty sure this id is actually the downstairs one
 		  {header: "LR", dataIndex: "109AA2BE000800C7"}
               ],
               stripeRows: true,
