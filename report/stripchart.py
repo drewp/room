@@ -97,11 +97,14 @@ class Chart(rend.Page):
                      "bottom: 50px; overflow: visible; border-left: 1px solid black" %
                      (x1, x2 - x1, row * 1.1))
             return T.div(class_="abs %s" % evDict.get('cssClass', ''),
-                         style=style)[evDict['state']]
+                         style=style)[evDict.get('state', evDict.get('marker'))]
         
         for ev in events:
             x1 = xPx(ev[0])
-            x2 = xPx(ev[1])
+            if ev[1] is not None:
+                x2 = xPx(ev[1])
+            else:
+                x2 = x1 + 30
             pts.append(backgroundRect(ev[2], x1, x2))
             pts.append(labelDiv(ev[2], x1, x2, row))
             row = (row + 1) % 3
@@ -134,10 +137,14 @@ class Chart(rend.Page):
         def makeTick(startSec, endSec, state, style='', class_=''):
             widthSec = (endSec - startSec)
             color = dict(Off='#555', On='#ffa', Suspend='#775',
-                         Standby='#dca').get(state, 'white')
+                         Standby='#dca').get(state)
+            if color is not None:
+                color = 'background: %s; ' % color
+            else:
+                color = ''
                      
             return T.div(class_="abs %s" % class_,
-                     style="background: %s; left: %.2f%%; width: %.2f%%; %s" % (
+                     style="%s left: %.2f%%; width: %.2f%%; %s" % (
                 color,
                 100 * startSec / 86400,
                 100 * widthSec / 86400,
@@ -148,8 +155,13 @@ class Chart(rend.Page):
             ticks = []
 
             for (startSec, endSec, state) in sorted(bands):
-                ticks.append(makeTick(startSec - row[0], endSec - row[0],
-                                      state['state']))
+                if endSec is not None:
+                    ticks.append(makeTick(startSec - row[0], endSec - row[0],
+                                          state['state']))
+                else:
+                    ticks.append(makeTick(startSec - row[0],
+                                          startSec - row[0] + 3600,
+                                          state=state['marker']))
 
             for hr in range(24):
                 ticks.append(makeTick(3600 * hr, 3600 * hr + 3200,
