@@ -17,7 +17,7 @@ div.tdContents {
 div.abs {
   display: inline;
   position: absolute;
-  overflow: hidden;
+  xxoverflow: hidden;
   height: 100%;
 }
 div.hourHead {
