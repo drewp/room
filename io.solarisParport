@@ -64,19 +64,26 @@ graph.parse("devices.n3", format="n3")
 thisHost = Literal(socket.getfqdn())
 thisDevice = Literal(bits.port.device)
 log.info("I have %r on %r" % (thisDevice, thisHost))
-for row in graph.query(
-    """SELECT ?pin ?bit {
+for pin, bit, pulse in graph.query(
+    """SELECT ?pin ?bit ?pulse {
          ?pin rm:host ?host;
          rm:port ?port;
          rm:bit ?bit .
+         OPTIONAL { ?pin rm:pulse ?pulse }
        }""",
     initNs=dict(rm=ROOM),
     initBindings={Variable("?port") : thisDevice,
                   Variable("?host") : thisHost,
                   }):
-    pin, bit = row
     log.info("watching for changes to %s", pin)
-    dispatcher.connect(lambda obj, bit=bit: bits.set(int(bit), value=obj),
+    def setter(obj, bit=bit, _pulse=pulse):
+        if _pulse is None:
+            bits.set(int(bit), value=obj)
+        else:
+            bits.set(int(bit), value=obj)
+            reactor.callLater(float(_pulse), bits.set, int(bit), value=0)
+
+    dispatcher.connect(setter,
                        (str(pin), str(ROOM['value']), None), weak=False)
 
 

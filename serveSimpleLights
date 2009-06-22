@@ -24,7 +24,7 @@ class Main(rend.Page):
 
         dispatcher.send('insteon send',
                         device=args['device'], level=float(args['level']))
-        return url.here.parent()
+        return url.URL.fromString('http://bigasterisk.com/magma/simpleLights/') # here.parent()
 
 hubclient.connect()
 log.startLogging(sys.stdout)

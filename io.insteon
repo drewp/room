@@ -17,7 +17,7 @@ def send(device, level):
     log.debug("run: %s", cmd)
     os.system(cmd)
 
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 hubclient.connect()
 
 dispatcher.connect(send, 'insteon send')

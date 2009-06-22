@@ -38,7 +38,7 @@ def dataIn(**kw):
 
         #appendToLog()
         
-        history[:] = history[-500:] + [typed]
+        history[:] = history[-1000:] + [typed]
 
 def appendToLog(t, sensor, value):
     pass
