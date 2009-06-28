@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 from nevow import tags as T, rend, loaders
 from datetime import date, datetime, time as datetime_time, timedelta
@@ -6,14 +7,15 @@ class Events(object):
     """collection of timeseries events"""
     def __init__(self, events):
         """takes list of (start, end, {label:...}) tuples.
+        Times are unix seconds.
 
         Use end=None for one-shot events
         """
         self.tuples = events
         times = [s for s,e,d in self.tuples] + [e for s,e,d in self.tuples
                                                 if e is not None]
-        self.minTime = min(times)
-        self.maxTime = max(times)
+        self.minTime = min(times) if times else 0
+        self.maxTime = max(times) if times else 1
 
     def __iter__(self):
         return iter(self.tuples)
@@ -74,12 +76,14 @@ class Chart(rend.Page):
                 self.prevLabel = label
             
         ticks = TimeTicks(times)
-        
+
         t = events.minTime
         prevLabel = [None] * 3
         while t <= events.maxTime:
             ticks.addTickAtTime(t)
-            t += dxTime(100)
+            dt = dxTime(100)
+            assert dt > 0
+            t += dt
 
         lowerHalf = T.div[line, times]
 
@@ -110,18 +114,18 @@ class Chart(rend.Page):
             row = (row + 1) % 3
 
         upperHalf = T.div(style="position: relative; overflow: hidden; width: %spx; height: 50px" % widthPx)[pts]
-        
+
         return T.div[
             self.title,
             T.div(class_="timeline-outer")[upperHalf, lowerHalf]]
     
     def render_table(self, ctx, data):
-
         events = self.getData(ctx)
 
         rows = {} # (mintime,maxtime) : bands
         startHour = 7
-        for r in dayRanges(date(2009,6,20), date(2009, 6, 25),
+        for r in dayRanges(date.fromtimestamp(events.minTime),
+                           date.fromtimestamp(events.maxTime),
                            startHour=startHour):
             rows[r] = []
 
@@ -181,7 +185,6 @@ class Chart(rend.Page):
                 ])
         
         return T.table(width="100%")[trs]
-    
 
 def dayRanges(d1, d2, periodHours=24, startHour=0):
     """
