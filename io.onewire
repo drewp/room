@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.5
 """
 normal accessing of the 'temperature' field on the sensors wasn't
 working. I always got '85' (the power-on reset value). owfs verison is 2.7p2
@@ -22,11 +22,13 @@ python support.
 """
 import time, logging, traceback
 from louie import dispatcher
-from twisted.internet.task import LoopingCall
+from twisted.internet.task import LoopingCall, deferLater
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet import reactor
 import ow
 
 import hubclient
+from carbondata import CarbonClient
 from logsetup import commonlogsetup
 
 log = commonlogsetup(filename=None)
@@ -47,6 +49,7 @@ class TempReader(object):
 
         ow.owfs_put('/settings/units/temperature_scale', 'F')
 
+    @inlineCallbacks
     def getCompleteTemps(self, maxTime=120):
         ret = {}
         tries = 0
@@ -62,18 +65,18 @@ class TempReader(object):
 
             if len(ret) >= self.expectedSensors:
                 log.info("after %s tries, temps=%s" % (tries, ret))
-                return dict([(s.address,val) for s, val in ret.items()])
+                break
 
             log.debug("..only have %s measurements; still trying for %d secs" %
                       (len(ret), giveUp - now))
             self.initOnewire()
             self.requestTemps()
-            time.sleep(.5)
+            yield deferLater(reactor, .5, lambda: None)
             now = time.time()
-            
-        log.warn("giving up after %s secs, only got %s measurements" %
-                 (maxTime, len(ret)))
-        return ret
+        else:
+            log.warn("giving up after %s secs, only got %s measurements" %
+                     (maxTime, len(ret)))
+        returnValue(dict([(s.address,val) for s, val in ret.items()]))
 
     def allSensors(self):
         return ow.Sensor('/').sensors()
@@ -106,12 +109,26 @@ class TempReader(object):
     
 hubclient.connect()
 reader = TempReader()
+carbon = CarbonClient(serverHost='bang')
+
+@inlineCallbacks
 def sendTemps():
     try:
-        temps = reader.getCompleteTemps(maxTime=30)
+        temps = yield reader.getCompleteTemps(maxTime=30)
     except Exception, e:
         reactor.stop()
         raise
+    now = time.time()
+    for k, v in temps.items():
+        carbon.send('system.house.temp.%s' % {
+            # these need renames to their proper rooms
+            '104F718D00080038': 'sens1' ,
+            '1014958D0008002B': 'sens2',
+            '10CB6CBE0008005E':'sens3',
+            '109AA2BE000800C7':'sens4',
+            }[str(k)],
+                    float(v), now)
+    # dump this?
     dispatcher.send('temps', temps=temps)
 
 sendTemps()
