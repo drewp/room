@@ -1,24 +1,25 @@
 #!/usr/bin/python
-from carbondata import CarbonClient
+from twisted.internet.task import LoopingCall
+from twisted.internet import reactor
 import restkit, jsonlib, logging, time
 from logsetup import commonlogsetup
+from carbondata import CarbonClient
 
 log = commonlogsetup(filename=None)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 carbon = CarbonClient(serverHost='bang')
 
-while True:
+def update():
     now = time.time()
-    nextRead = now + 120
     try:
         shiftweb = restkit.Resource("http://plus:9014/", timeout=3)
-        temp = jsonlib.load(shiftweb.get("temperature").body)['temp']
-        log.info("write temp %s" % temp)
+        temp = jsonlib.read(shiftweb.get("temperature").body, use_float=True)['temp']
+        log.info("write temp %r" % temp)
         carbon.send('system.house.temp.ariroom', temp, now)
-        print "sent carbon"
+        log.debug("wrote to carbon")
     except restkit.RequestError, e:
-        print "err", e
         log.warn(e)
-    print "sleep"
-    time.sleep(max(0, nextRead - time.time()))
+update()
+LoopingCall(update).start(interval=120)
+reactor.run()
