@@ -17,4 +17,4 @@ while True:
         carbon.send('system.house.temp.ariroom', temp, now)
     except restkit.RequestError, e:
         log.warn(e)
-    time.sleep(max(0, time.time() - nextRead))
+    time.sleep(max(0, nextRead - time.time()))
