@@ -3,7 +3,7 @@ import os, struct
 
 IOPWRITE = 2
 class SolarisParport(object):
-    """alternate implementation of an ieee1294.Port
+    """alternate implementation of an ieee1284.Port
 
     where you might use this elsewhere:
         import ieee1284
