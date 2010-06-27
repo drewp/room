@@ -12,9 +12,13 @@ while True:
     now = time.time()
     nextRead = now + 120
     try:
-        shiftweb = restkit.Resource("http://plus:9014/")
+        shiftweb = restkit.Resource("http://plus:9014/", timeout=3)
         temp = jsonlib.load(shiftweb.get("temperature").body)['temp']
+        log.info("write temp %s" % temp)
         carbon.send('system.house.temp.ariroom', temp, now)
+        print "sent carbon"
     except restkit.RequestError, e:
+        print "err", e
         log.warn(e)
+    print "sleep"
     time.sleep(max(0, nextRead - time.time()))
