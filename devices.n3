@@ -7,37 +7,42 @@
 @prefix port: <http://bang.bigasterisk.com/parport/parport0#> .
 @prefix onewire: <http://bigasterisk.com/onewire/> .
 @prefix cmd: <http://bigasterisk.com/magma/cmd/> .
+@prefix bang1: <http://bigasterisk.com/bang/arduino/pin/> .
 
 device:lock1 rdfs:label "downstairs door lock" .
 
-slashport:pin2 a :ParportPin; 
-  :host "slash.bigasterisk.com";
-  :port "0x3bc"; 
-  :bit 2 .
+:putUrl rdfs:comment "this pin can be set by calling PUT on the given url with a body of '0' or '1'" .
+device:frontLights a :ParportPin; :putUrl "http://slash:9014/otherBit?bit=1" .
 
-port:pin0 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 0 .
+device:heater :putUrl "http://bang:9056/pin/d4" .
 
-port:pin3 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 3 .
-port:pin4 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 4 .
-port:pin5 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 5 .
-port:pin6 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 6 .
-port:pin7 a :ParportPin; :host "bigasterisk.com"; :port "/dev/parport0"; :bit 7 .
+# these are the bedroom red light, untested
+bang1:d7 :putUrl "http://bang:9056/pin/d7" .
+bang1:d8 :putUrl "http://bang:9056/pin/d8" .
 
 :pulse rdfs:comment "number of seconds this pin should stay high when it is set to 1. Then the pin automatically goes back to 0." .
 
 port:pin0 rdfs:label "unlock door" .
 port:pin3 rdfs:label "heater power" .
-
+ 
 # .1 second pulse was too short for redlight, once
 
-port:pin5 rdfs:label "outdoor off"; :pulse ".4" . cmd:deckLightOff :oneShot port:pin5 .
-port:pin7 rdfs:label "outdoor on"; :pulse ".4" . cmd:deckLightOn :oneShot port:pin7 .
+device:deckLightOff :putUrl "http://bang:9056/pin/d5"; rdfs:label "outdoor off (x1)"; :pulse ".4" . 
+device:deckLightOn :putUrl "http://bang:9056/pin/d6"; rdfs:label "outdoor on (x2)"; :pulse ".4" . 
 
-port:pin4 rdfs:label "bedroomred off"; :pulse ".8" . cmd:bedroomRedLightOff :oneShot port:pin4 .
-port:pin6 rdfs:label "bedroomred on"; :pulse ".8" . cmd:bedroomRedLightOn :oneShot port:pin6 .
+cmd:deckLightOff :oneShot device:deckLightOff .
+cmd:deckLightOn :oneShot device:deckLightOn .
 
-port:pinBusy rdfs:label "heater sense" .
+#port:pin_d7 rdfs:label "bedroomred off? (y1)"; :pulse ".8" . 
+cmd:bedroomRedLightOff :oneShot device:bedroomRedLightOff .
+#port:pin_d8 rdfs:label "bedroomred on? (y2)"; :pulse ".8" . 
+cmd:bedroomRedLightOn :oneShot device:bedroomRedLightOn .
 
+port:unfinished1 :putUrl "http://bang:9056/pin/d12"; rdfs:label "heater sense" .
+
+device:frontLights rdfs:label "front light" . 
+cmd:frontLightOff :clearPin device:frontLights .
+cmd:frontLightOn :setPin device:frontLights .
 
 { device:lock1 :state :locked   } => { port:pin0 :value 0 } .
 { device:lock1 :state :unlocked } => { port:pin0 :value 1 } .
