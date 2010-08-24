@@ -1,0 +1,34 @@
+#!/usr/bin/python
+
+"""
+
+for one-time import of old-style bluetooth-stray-phones file (which is
+probably still growing, but after time 1282550194.81, the rows should
+already be in mongo
+
+./mongoimport -v -d visitor -c visitor --file /my/proj/room/bluetooth-stray-phones.json
+"""
+
+import re, datetime, jsonlib
+from dateutil import tz
+
+lastSeen = {} # addr : time
+for line in open("bluetooth-stray-phones"):
+    m = re.match(r"(\S+) (.*) (\S+)$", line.decode('utf8'))
+
+    t, name, addr = m.groups()
+    t = float(t)
+
+    if lastSeen.get(addr, 0) > t - 60*90:
+        lastSeen[addr] = t
+        continue
+    lastSeen[addr] = t
+    d = {"sensor" : "bluetooth",
+         "address" : addr,
+         "name" : name,
+         "created" : { "$date" : int(t*1000) },
+         "action" : "arrive",
+         "import" : "2010-08-23",
+         }
+    print jsonlib.write(d)
+    
