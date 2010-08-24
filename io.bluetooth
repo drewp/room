@@ -15,16 +15,19 @@ depends on ubuntu package: python-bluez
 
 """
 
-import bluetooth, logging, time
+import bluetooth, logging, time, datetime, restkit, jsonlib
 from twisted.internet import reactor, defer
 import hubclient
 from louie import dispatcher
 from logsetup import commonlogsetup
 from rdflib.Graph import Graph
 from rdflib import Literal, Variable, Namespace
+from pymongo import Connection
+from dateutil import tz
 
 log = commonlogsetup(filename=None)
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARN)
+mongo = Connection('bang', 27017)['visitor']['visitor']
 
 ROOM = Namespace("http://projects.bigasterisk.com/room/")
 
@@ -84,12 +87,24 @@ graph = Graph()
 graph.parse("phones.n3", format="n3")
 
 d = Disco()
+hub = restkit.Resource(
+    # PSHB not working yet; "http://bang:9030/"
+    "http://slash:9049/"
+    )
 
-lastDevs = set()
+def mongoInsert(msg):
+    hub.post("visitorNet", payload=jsonlib.dumps(msg)) # sans datetime
+    msg['created'] = datetime.datetime.now(tz.gettz('UTC'))
+    mongo.insert(msg, safe=True)
+
+lastDevs = set() # addresses
+lastNameForAddress = {}
 def loop(*args):
+    log.debug("get devices")
     devs = d.nearbyDevices()
 
     def compare(newDevs):
+        log.debug("got: %r", newDevs)
         global lastDevs
         lostDevs = lastDevs.copy()
         prevDevs = lastDevs.copy()
@@ -109,11 +124,22 @@ def loop(*args):
                     f = open("bluetooth-stray-phones", "a")
                     print >>f, "%s %s %s" % (time.time(), name, address)
                     f.close()
+                lastNameForAddress[address] = name
+                mongoInsert({"sensor" : "bluetooth",
+                             "address" : address,
+                             "name" : name,
+                             "action" : "arrive"})
+
                     
             lostDevs.discard(address)
             lastDevs.add(address)
 
         for address in lostDevs:
+            mongoInsert({"sensor" : "bluetooth",
+                         "address" : address,
+                         "name" : lastNameForAddress[address],
+                         "action" : "leave"})
+            
             for dev in devicesFromAddress(address):
                 log.info("lost %s" % dev)
                 dispatcher.send((str(ROOM['bluetooth']), str(ROOM['senses']),
