@@ -6,11 +6,15 @@ arduino example sketches, 'StandardFirmata'.
 Now using http://code.google.com/p/pyduino, modified to run at 57600
 baud like my arduino's code does. pyduino is better than the lupeke
 one in that you can read your settings off the output pins
-"""
 
-import sys, web
-from web.contrib.template import render_genshi
-render = render_genshi('.', auto_reload=True)
+Note that there are some startup delays and you may not hear about
+input changes for a few seconds.
+"""
+from __future__ import division
+import sys, cyclone.web, time, httplib, cgi, simplejson
+from twisted.web.client import getPage
+from twisted.python import log
+from twisted.internet import reactor, task
 
 sys.path.append("pyduino-read-only")
 import pyduino 
@@ -20,53 +24,108 @@ def _num(name):
         return int(name[1:])
     raise ValueError(name)
 
-class pin(object):
-    def GET(self, name):
-        web.header("Content-Type", "text/plain")
+class PrettyErrorHandler(cyclone.web.RequestHandler):
+    def get_error_html(self, status_code, **kwargs):
+        tb = kwargs['exception'].getTraceback() if 'exception' in kwargs else ''
+        return "<html><title>%(code)d: %(message)s</title>" \
+               "<body>%(code)d: %(message)s<pre>%(tb)s</pre></body></html>" % {
+            "code": status_code,
+            "message": httplib.responses[status_code],
+            "tb" : cgi.escape(tb),
+        }
+                         
+class pin(PrettyErrorHandler):
+    def get(self, name):
+        self.set_header("Content-Type", "text/plain")
+        arduino = self.settings.arduino
         arduino.iterate()
-        return str(arduino.digital[_num(name)].read())
+        self.write(str(int(arduino.digital[_num(name)].read())))
 
-    def PUT(self, name):
-        arduino.digital[_num(name)].write(int(web.data()))
-        return ""
+    def put(self, name):
+        t1 = time.time()
+        self.settings.arduino.digital[_num(name)].write(int(self.request.body))
+        log.msg("arduino write in %.1f ms" % (1000 * (time.time() - t1)))
+        
 
-class pinMode(object):
-    def GET(self, name):
-        web.header("Content-Type", "text/plain")
-        mode = arduino.digital[_num(name)].get_mode()
-        return {pyduino.DIGITAL_INPUT : "input",
-                pyduino.DIGITAL_OUTPUT : "output"}[mode]
+class pinMode(PrettyErrorHandler):
+    def get(self, name):
+        self.set_header("Content-Type", "text/plain")
+        mode = self.settings.arduino.digital[_num(name)].get_mode()
+        self.write({pyduino.DIGITAL_INPUT : "input",
+                    pyduino.DIGITAL_OUTPUT : "output"}[mode])
     
-    def PUT(self, name):
+    def put(self, name):
         mode = {
             "input" : pyduino.DIGITAL_INPUT,
-            "output" : pyduino.DIGITAL_OUTPUT}[web.data().strip()]
-        arduino.digital[_num(name)].set_mode(mode)
-        return ""
+            "output" : pyduino.DIGITAL_OUTPUT}[self.request.body.strip()]
+        self.settings.arduino.digital[_num(name)].set_mode(mode)
 
-class index(object):
-    def GET(self):
-        web.header("Content-Type", "application/xhtml+xml")
-        return render.index()
+class index(PrettyErrorHandler):
+    def get(self):
+        self.set_header("Content-Type", "application/xhtml+xml")
+        self.write(open('index.html').read())
     
-urls = (r'/', "index",
-        r'/pin/(.*)/mode', 'pinMode',
-        r'/pin/(.*)', 'pin',
-        # web refresh could benefit a lot from a json resource that
-        # gives all the state
-        )
+class Application(cyclone.web.Application):
+    def __init__(self, arduino):
+        handlers = [
+            (r"/", index),
+            (r'/pin/(.*)/mode', pinMode),
+            (r'/pin/(.*)', pin),
+            # web refresh could benefit a lot from a json resource that
+            # gives all the state
+        ]
+        settings = {"arduino" : arduino,}
+        cyclone.web.Application.__init__(self, handlers, **settings)
 
-arduino = pyduino.Arduino("/dev/ttyUSB0")
+class WatchPins(object):
+    def __init__(self, arduino, conf):
+        self.arduino, self.conf = arduino, conf
+        self.lastState = {}
+        self.pins = conf['watchPins']
+        if self.pins == 'allInput':
+            self.watchAllInputs()
+        for pin in self.pins:
+            arduino.digital_ports[pin >> 3].set_active(1)
+            arduino.digital[pin].set_mode(pyduino.DIGITAL_INPUT)
 
-app = web.application(urls, globals())
+    def watchAllInputs(self):
+        raise NotImplementedError("this needs to be updated whenever the modes change")
+        self.pins = [p for p in range(2, 13+1) if
+                     self.arduino.digital[p].get_mode() ==
+                     pyduino.DIGITAL_INPUT]
 
-def errorToUser():
-    txt = str(sys.exc_info()[1])
-    return web.webapi._InternalError(txt) 
-app.internalerror = errorToUser
+    def reportPostError(self, fail, pin, value, url):
+        log.err("failed to send pin %s update (now %s) to %r: %r" % (pin, value, url, fail)) 
+        
+    def poll(self):
+        arduino.iterate()
+        for pin in self.pins:
+            current = arduino.digital[pin].read()
+            if current != self.lastState.get(pin, None):
+                d = getPage(
+                    self.conf['post'],
+                    method="POST",
+                    postdata=simplejson.dumps(dict(board=self.conf['boardName'], pin=pin, level=int(current))),
+                    headers={'Content-Type' : 'application/json'})
+                d.addErrback(self.reportPostError, pin, current, self.conf['post'])
 
-# ..cmdline opts to set pins to output at startup
+                self.lastState[pin] = current
 
 if __name__ == '__main__':
-    sys.argv.append("9056")
-    app.run()
+
+    config = { # to be read from a file
+        'arduinoPort': '/dev/ttyUSB0',
+        'servePort' : 9056,
+        'pollFrequency' : 20,
+        'post' : 'http://bang:9069/pinChange',
+        'boardName' : 'theater', # gets sent with updates
+        'watchPins' : [9, 10], # or 'allInput' (not yet working)
+        # todo: need options to preset inputs/outputs at startup
+        }
+
+    log.startLogging(sys.stdout)
+    arduino = pyduino.Arduino(config['arduinoPort'])
+    wp = WatchPins(arduino, config)
+    task.LoopingCall(wp.poll).start(1/config['pollFrequency'])
+    reactor.listenTCP(config['servePort'], Application(arduino))
+    reactor.run()
