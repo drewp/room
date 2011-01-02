@@ -84,7 +84,7 @@
       <input type="radio" name="d13-mode" value="output" id="d13-output"/> <label for="d13-output">output</label> </span>
     </div>
 
-    <div><button id="refresh">Refresh</button></div>
+    <div><button id="refresh">Refresh</button> <input type="checkbox" name="autoRefresh" id="autoRefresh"/> <label for="autoRefresh">Auto refresh</label></div>
 
 
     <div id="ajaxError"/>
@@ -121,6 +121,15 @@
 		});
 	}
 
+	function refreshLoop() {
+  	    if ($("#autoRefresh").is(":checked")) {
+	        refresh();
+	        setTimeout(function() { refreshLoop(); }, 
+                  500); // refresh is async, so these could pile up
+	    }
+	}
+
+	$("#autoRefresh").click(refreshLoop);
 	$("#refresh").click(refresh);
 
 	$(".mode input").removeAttr('disabled').change(function () {
