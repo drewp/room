@@ -1,4 +1,15 @@
 #!/usr/bin/python
+"""
+gather subgraphs from various services, run them through a rules
+engine, and make http requests with the conclusions.
+
+E.g. 'when drew's phone is near the house, and someone is awake,
+unlock the door when the door's motion sensor is activated'
+
+When do we gather? The services should be able to trigger us, perhaps
+with PSHB, that their graph has changed.
+"""
+
 
 from twisted.internet import reactor
 import hubclient
