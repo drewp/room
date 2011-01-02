@@ -4,13 +4,20 @@ records interesting events to mongodb, sends further messages.
 
 Will also serve activity stream.
 """
-import sys, datetime, cyclone.web, simplejson
+import sys, os, datetime, cyclone.web, simplejson
 from twisted.python import log
 from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.web.client import getPage
 from dateutil.tz import tzutc
 from pymongo import Connection
+from rdflib import Namespace
 sys.path.append("/my/site/magma")
 from activitystream import ActivityStream
+from stategraph import StateGraph
+
+DEV = Namespace("http://projects.bigasterisk.com/device/")
+ROOM = Namespace("http://projects.bigasterisk.com/room/")
 
 class Index(cyclone.web.RequestHandler):
     def get(self):
@@ -25,6 +32,30 @@ class PinChange(cyclone.web.RequestHandler):
                        }[msg['pin']]
         self.settings.mongo.insert(msg)
 
+        # triggers go here: new motion means we need to consider a
+        # door unlock; then keep polling after that to know when we
+        # should lock it again (no motion for a while, or door open)
+    
+class GraphHandler(cyclone.web.RequestHandler):
+    """
+    fetch the pins from drv right now (so we don't have stale data),
+    and return an rdf graph describing what we know about the world
+    """
+    @inlineCallbacks
+    def get(self):
+        g = StateGraph(ctx=DEV['theaterArduino'])
+
+        doorOpen = int((yield getPage("http://bang:9056/pin/d9")))
+        g.add((DEV['theaterDoorOpen'], ROOM['state'],
+               ROOM['open'] if doorOpen else ROOM['closed']))
+
+        motion = int((yield getPage("http://bang:9056/pin/d10")))
+        g.add((DEV['theaterDoorOutsideMotion'], ROOM['state'],
+               ROOM['motion'] if motion else ROOM['noMotion']))
+
+        self.set_header('Content-type', 'application/x-trig')
+        self.write(g.asTrig())
+        
 class Activity(cyclone.web.RequestHandler):
     def get(self):
         a = ActivityStream()
@@ -60,17 +91,17 @@ class Activity(cyclone.web.RequestHandler):
         self.set_header("Content-type", "application/atom+xml")
         self.write(a.makeAtom())
 
-
-        
 class Application(cyclone.web.Application):
     def __init__(self):
         handlers = [
             (r"/", Index),
             (r'/pinChange', PinChange),
             (r'/activity', Activity),
+            (r'/graph', GraphHandler),
         ]
         settings = {
-            'mongo' : Connection('bang', 27017, tz_aware=True)['house']['sensor']
+            'mongo' : Connection('bang', 27017,
+                                 tz_aware=True)['house']['sensor']
             }
         cyclone.web.Application.__init__(self, handlers, **settings)
 
