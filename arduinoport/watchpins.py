@@ -25,6 +25,9 @@ class Index(cyclone.web.RequestHandler):
 
 class PinChange(cyclone.web.RequestHandler):
     def post(self):
+        # there should be per-pin debounce settings so we don't log
+        # all the noise of a transition change
+        
         msg = simplejson.loads(self.request.body)
         msg['t'] = datetime.datetime.now(tzutc())
         msg['name'] = {9: 'downstairsDoorOpen', 
