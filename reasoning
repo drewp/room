@@ -11,12 +11,10 @@ with PSHB, that their graph has changed.
 """
 
 
-from twisted.internet import reactor
-import hubclient
-import time, socket, logging, re, sys
-from louie import dispatcher
+from twisted.internet import reactor, task
+import time, logging, re, sys, jsonlib, datetime
 from rdflib.Graph import Graph, ConjunctiveGraph
-from rdflib import Literal, Variable, Namespace, URIRef, StringInputSource
+from rdflib import Namespace, URIRef, StringInputSource, Literal
 import restkit
 from logsetup import commonlogsetup
 
@@ -27,36 +25,15 @@ from rdflib import plugin
 from rdflib.store import Store
 from FuXi.Rete.RuleStore import N3RuleStore
 
+import cyclone.web
+
 log = commonlogsetup(filename=None)
 log.setLevel(logging.INFO)
+logging.getLogger('restkit.client').setLevel(logging.WARN)
 ROOM = Namespace("http://projects.bigasterisk.com/room/")
+DEV = Namespace("http://projects.bigasterisk.com/device/")
 
-
-def anyEvent(signal, **kw):
-    if not (isinstance(signal, tuple) and len(signal) == 3):
-        return
-
-    s, p = URIRef(signal[0]), URIRef(signal[1])
-    if str(kw['obj']).startswith('http:'):
-        o = URIRef(kw['obj'])
-    else:
-        o = Literal(kw['obj'])
-
-    consider((s,p,o), kw.get('delete', False))
-
-
-def consider((s,p,o), delete=False):
-    """
-    this is where the reasoning would go, taking all the known stmts
-    and producing some more that the output modules would care about
-    """
-
-    
-#hubclient.connect()
-#dispatcher.connect(anyEvent)
-#reactor.run()
-
-
+ 
 def infer(graph, rules):
     """
     returns new graph of inferred statements
@@ -72,12 +49,6 @@ def infer(graph, rules):
 
     store.rollback()
     return target
-
-def loadRules(rulesN3):
-    ruleStore = N3RuleStore()
-    ruleGraph = Graph(ruleStore)
-    ruleGraph.parse(StringInputSource(rulesN3), format='n3')             
-    return ruleStore
 
 def parseTrig(trig):
     """
@@ -103,24 +74,122 @@ def gatherGraph():
     for source in ["http://bang:9069/graph", "http://bang:9070/graph"]:
         addTrig(g, source)
 
-    rules = loadRules('''
-@prefix : <http://projects.bigasterisk.com/room/>.
-@prefix bigast: <http://bigasterisk.com/>.
-@prefix dev: <http://projects.bigasterisk.com/device/>.
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    ctx = ROOM.clock
+    g.addN([
+        (ROOM.localHour, ROOM.state, Literal(datetime.datetime.now().hour),
+         ctx),
+        ])
+    return g
 
-{ <http://bigasterisk.com/wifiDevice/00:> :connected bigast:wifiAccessPoints . } => { :auth :near :home } .
-{ <http://bigasterisk.com/wifiDevice/00:> :connected bigast:wifiAccessPoints . } => { :auth :near :home } .
+def graphWithoutMetadata(g, ignorePredicates=[]):
+    """
+    graph filter that removes any statements whose subjects are
+    contexts in the graph and also any statements with the given
+    predicates
+    """
+    ctxs = map(URIRef, set(g.contexts())) # weird they turned to strings
 
-{
-  :auth :near :home .
-  dev:theaterDoorOutsideMotion :state :motion.
-  dev:theaterDoorOpen :state :closed .
-} => { :door :is :open } .
-    ''')
+    out = ConjunctiveGraph()
+    for stmt in g.quads((None, None, None)):
+        if stmt[0] not in ctxs and stmt[1] not in ignorePredicates:
+            out.addN([stmt])
+    return out
 
-    inferred = infer(g, rules)
-        
-    print inferred.serialize(format='n3')
+def graphEqual(a, b, ignorePredicates=[]):
+    """
+    compare graphs, omitting any metadata statements about contexts
+    (especially modification times) and also any statements using the
+    given predicates
+    """
+    stmtsA = graphWithoutMetadata(a, ignorePredicates)
+    stmtsB = graphWithoutMetadata(b, ignorePredicates)
+    return set(stmtsA) == set(stmtsB)    
 
-gatherGraph()
+class Reasoning(object):
+    def __init__(self):
+        self.prevGraph = None
+
+        self.deviceGraph = Graph()
+        self.deviceGraph.parse("/my/proj/room/devices.n3", format="n3")
+
+        self.rulesN3 = "(not read yet)"
+        self.inferred = Graph() # gets replaced in each graphChanged call
+
+    def readRules(self):
+        self.rulesN3 = open('rules.n3').read() # for web display
+        self.ruleStore = N3RuleStore()
+        self.ruleGraph = Graph(self.ruleStore)
+        self.ruleGraph.parse('rules.n3', format='n3') # for inference
+
+    def poll(self):
+        try:
+            self._poll()
+        except Exception, e:
+            log.error(e)
+            
+    def _poll(self):
+        g = gatherGraph()
+        if (self.prevGraph is not None and
+            graphEqual(g, self.prevGraph,
+                       ignorePredicates=[ROOM.signalStrength])):
+            return
+        self.prevGraph = g
+        self.graphChanged(g)
+
+    def graphChanged(self, g):
+        # i guess these are getting consumed each inference
+        self.readRules()
+        self.inferred = infer(g, self.ruleStore)
+
+        print "new inferred graph:"
+        for stmt in self.inferred:
+            print " ", stmt
+
+        for dev in [DEV.theaterDoorLock]:
+            url = self.deviceGraph.value(dev, ROOM.putUrl)
+            value = "1" if (dev, ROOM.state, ROOM.unlocked) in self.inferred else "0"
+            print "put %s to %s" % (value, url)
+            restkit.request(url=url+"/mode", method="PUT", body="output")
+            restkit.request(url=url, method="PUT", body=value)
+
+
+class Index(cyclone.web.RequestHandler):
+    def get(self):
+        self.set_header("Content-Type", "application/xhtml+xml")
+        self.write(open('reasoning.html').read())
+
+# for reuse
+class GraphResource(cyclone.web.RequestHandler):
+    def get(self, which):
+        self.set_header("Content-Type", "application/json")
+        r = self.settings.reasoning
+        g = {'lastInput': r.prevGraph,
+             'lastOutput': r.inferred,
+             }[which]
+        self.write(self.jsonRdf(g))
+
+    def jsonRdf(self, g):
+        return jsonlib.dumps(sorted(list(g)))
+
+class Rules(cyclone.web.RequestHandler):
+    def get(self):
+        self.set_header("Content-Type", "text/plain")
+        self.write(self.settings.reasoning.rulesN3)
+
+class Application(cyclone.web.Application):
+    def __init__(self, reasoning):
+        handlers = [
+            (r"/", Index),
+            (r'/(lastInput|lastOutput)Graph', GraphResource),
+            (r'/rules', Rules),
+        ]
+        cyclone.web.Application.__init__(self, handlers, reasoning=reasoning)
+
+if __name__ == '__main__':
+    r = Reasoning()
+    import twisted.python.log
+    twisted.python.log.startLogging(sys.stdout)
+    
+    task.LoopingCall(r.poll).start(1.0)
+    reactor.listenTCP(9071, Application(r))
+    reactor.run()
