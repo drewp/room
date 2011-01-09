@@ -93,7 +93,12 @@ hub = restkit.Resource(
     )
 
 def mongoInsert(msg):
-    hub.post("visitorNet", payload=jsonlib.dumps(msg)) # sans datetime
+    try:
+        js = jsonlib.dumps(msg)
+    except UnicodeDecodeError:
+        pass
+    else:
+        hub.post("visitorNet", payload=js) # sans datetime
     msg['created'] = datetime.datetime.now(tz.gettz('UTC'))
     mongo.insert(msg, safe=True)
 
@@ -148,7 +153,7 @@ def loop(*args):
         reactor.callLater(0, loop)
     devs.addCallback(compare)
     devs.addErrback(log.error)
-
+# this hangs way too easily. it should keep looping or die.
 
 reactor.callLater(0, loop)
 
