@@ -98,6 +98,16 @@ class WatchPins(object):
         log.err("failed to send pin %s update (now %s) to %r: %r" % (pin, value, url, fail)) 
         
     def poll(self):
+        try:
+            self._poll()
+        except Exception, e:
+            log.err("during poll:")
+            log.err(e)
+
+    def _poll(self):
+        # this can IndexError for a port number being out of
+        # range. I'm not sure how- maybe error data coming in the
+        # port?
         arduino.iterate()
         for pin in self.pins:
             current = arduino.digital[pin].read()
