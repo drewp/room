@@ -53,8 +53,9 @@ class Main(rend.Page):
                     sensors.update(row.keys())
                 sensors.discard(u'time')
                 sensors = sorted(sensors)
-                return "(%s)" % json.serialize({u'sensors' : sensors,
-                                                u'temps' : history})
+                return "(%s)" % json.serialize({
+                    u'sensors' : sensors,
+                    u'temps' : history[-(ctx.arg('limit') or 0):]})
         return Ret()
     
     def child_heater(self, ctx):
