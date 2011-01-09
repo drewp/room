@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "$1 $2 "`date +%s` | nc -q 0 bang 2003
