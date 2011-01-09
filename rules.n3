@@ -1,0 +1,31 @@
+@prefix : <http://projects.bigasterisk.com/room/>.
+@prefix bigast: <http://bigasterisk.com/>.
+@prefix dev: <http://projects.bigasterisk.com/device/>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+{ <http://bigasterisk.com/wifiDevice/00:1> :connected bigast:wifiAccessPoints . } => { :auth :near :home } .
+{ <http://bigasterisk.com/wifiDevice/00:1> :connected bigast:wifiAccessPoints . } => { :auth :near :home } .
+
+{ :localHour :state 8 } => { :localHour :state :awakeTime } .
+{ :localHour :state 9 } => { :localHour :state :awakeTime } .
+{ :localHour :state 10 } => { :localHour :state :awakeTime } .
+{ :localHour :state 11 } => { :localHour :state :awakeTime } .
+{ :localHour :state 12 } => { :localHour :state :awakeTime } .
+{ :localHour :state 13 } => { :localHour :state :awakeTime } .
+{ :localHour :state 14 } => { :localHour :state :awakeTime } .
+{ :localHour :state 15 } => { :localHour :state :awakeTime } .
+{ :localHour :state 16 } => { :localHour :state :awakeTime } .
+{ :localHour :state 17 } => { :localHour :state :awakeTime } .
+{ :localHour :state 18 } => { :localHour :state :awakeTime } .
+{ :localHour :state 19 } => { :localHour :state :awakeTime } .
+{ :localHour :state 20 } => { :localHour :state :awakeTime } .
+{ :localHour :state 21 } => { :localHour :state :awakeTime } .
+{ :localHour :state 22 } => { :localHour :state :awakeTime } .
+{ :localHour :state 23 } => { :localHour :state :awakeTime } .
+
+{
+  :auth :near :home .
+  dev:theaterDoorOutsideMotion :state :motion.
+  dev:theaterDoorOpen :state :closed .
+  :localHour :state :awakeTime .
+} => { dev:theaterDoorLock :state :unlocked } .
