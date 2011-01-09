@@ -1,4 +1,4 @@
-#!/usr/bin/python2.5
+#!/usr/bin/python
 """
 normal accessing of the 'temperature' field on the sensors wasn't
 working. I always got '85' (the power-on reset value). owfs verison is 2.7p2
@@ -32,11 +32,11 @@ from carbondata import CarbonClient
 from logsetup import commonlogsetup
 
 log = commonlogsetup(filename=None)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 class TempReader(object):
     def __init__(self):
-        self.expectedSensors = 4
+        self.expectedSensors = 3
         self.ow = None
         self.initOnewire()
 
@@ -122,10 +122,10 @@ def sendTemps():
     for k, v in temps.items():
         carbon.send('system.house.temp.%s' % {
             # these need renames to their proper rooms
-            '104F718D00080038': 'sens1' ,
-            '1014958D0008002B': 'sens2',
-            '10CB6CBE0008005E':'sens3',
-            '109AA2BE000800C7':'sens4',
+            '104F718D00080038': 'downstairs' ,
+            '1014958D0008002B': 'tbd2', # when you set this, fix expected # too
+            '10CB6CBE0008005E': 'bedroom',
+            '109AA2BE000800C7': 'livingRoom',
             }[str(k)],
                     float(v), now)
     # dump this?
