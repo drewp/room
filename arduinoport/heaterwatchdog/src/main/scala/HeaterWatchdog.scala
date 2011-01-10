@@ -14,7 +14,7 @@ object HeaterWatchdog {
 
   // d4 is configured in devices.n3
   var targetPath = "pin/d4"
-  val tooLongSeconds = 2//50 * 60
+  val tooLongSeconds = 50 * 60
   var pollSeconds = 60
  
   def main(args: Array[String]) {
@@ -41,8 +41,11 @@ object HeaterWatchdog {
       }
       log.info("now at "+level+", high since "+highSince)
       if (highSince.exists((h) => (now - h) > (tooLongSeconds * 1000))) {
-        freezeArduinoDriver()
 	shutdownHeater()
+        // freeze after, since we do need it to listen to our command. But
+        // now there is a race to freeze it before anything else turns the
+        // output back on
+        freezeArduinoDriver()
 	return
       }
 
