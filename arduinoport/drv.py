@@ -11,7 +11,7 @@ Note that there are some startup delays and you may not hear about
 input changes for a few seconds.
 """
 from __future__ import division
-import sys, cyclone.web, time, httplib, cgi, simplejson
+import sys, cyclone.web, time, httplib, cgi, simplejson, os
 from twisted.web.client import getPage
 from twisted.python import log
 from twisted.internet import reactor, task
@@ -60,6 +60,11 @@ class pinMode(PrettyErrorHandler):
             "output" : pyduino.DIGITAL_OUTPUT}[self.request.body.strip()]
         self.settings.arduino.digital[_num(name)].set_mode(mode)
 
+class Pid(PrettyErrorHandler):
+    def get(self):
+        self.set_header("Content-Type", "text/plain")
+        self.write(str(os.getpid()))
+
 class index(PrettyErrorHandler):
     def get(self):
         self.set_header("Content-Type", "application/xhtml+xml")
@@ -71,6 +76,7 @@ class Application(cyclone.web.Application):
             (r"/", index),
             (r'/pin/(.*)/mode', pinMode),
             (r'/pin/(.*)', pin),
+            (r'/pid', Pid),
             # web refresh could benefit a lot from a json resource that
             # gives all the state
         ]
@@ -133,7 +139,7 @@ if __name__ == '__main__':
         # todo: need options to preset inputs/outputs at startup
         }
 
-    log.startLogging(sys.stdout)
+    #log.startLogging(sys.stdout)
     arduino = pyduino.Arduino(config['arduinoPort'])
     wp = WatchPins(arduino, config)
     task.LoopingCall(wp.poll).start(1/config['pollFrequency'])
