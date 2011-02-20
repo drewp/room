@@ -159,16 +159,22 @@ a img {
     background: #221103;
 }
 .graphSidebar {
- width: 100px;
-font-size: 80%;
-float:left;
+    width: 75px;
+    font-size: 10px;
+    float:left;
+    padding-top: 17px;
 }
 .graphUnder {
-font-size: 80%;
-clear:both;
+    font-size: 13px;
+    clear:both;
 }
 .graphUnder > div {
     display: inline-block;
+}
+.graphUnder label {
+    line-height: 30px;
+    display:inline-block;
+    padding: 4px;
 }
 .graphLayout {
     width: 320px;
@@ -178,11 +184,20 @@ clear:both;
     float: left;
 }
 .currentTemp {
-    font-size: 20px;
-  text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
 }
 .temp-livingRoom { color: #B45AE5; }
 .temp-downstairs { color: #4C4CC3; }
 .temp-bedroom    { color: #C80032; }
 .temp-ariBedroom { color: #0FB30F; }
 .temp-KSQL       { color: #966432; }
+
+form.lowRank {
+}
+form.lowRank button {
+height: 30px;
+width: 80px;
+background: #565656;
+}

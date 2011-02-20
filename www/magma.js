@@ -79,4 +79,36 @@ $(function () {
 	$("#blogChars").text("("+chars+")");
     });
 
+
+    function TempGraph() {
+	var self=this;
+	var graphImg = $(".graphLayout img");
+	self.hours = 26;
+	this.setImgSrc = function() {
+	    graphImg.attr(
+		"src", "http://graphite.bigasterisk.com/render/?"+
+		    $.param({
+			width: "240", height: "250",
+			target: ["system.house.temp.downstairs",
+				 "system.house.temp.ariroom",
+				 "keepLastValue(system.house.temp.bedroom)",
+				 "system.house.temp.livingRoom",
+				 "system.noaa.ksql.temp_f"],
+			from: "-"+self.hours+"hours",
+			hideAxes: "false",
+			hideLegend: "true",
+			lineWidth: "1.5",
+			yMin: "40", yMax: "90",
+		    }, true));
+	}
+
+	self.setImgSrc();
+	$("input[name=tempHours]").click(function () {
+	    self.hours = $("input[name=tempHours]:checked").attr("value");
+	    self.setImgSrc();
+	});
+	$("#th3")[0].checked = true;
+    }
+    var t=new TempGraph();
+
 });
