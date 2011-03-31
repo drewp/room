@@ -8,7 +8,7 @@ html > body {
     margin: 0 !important;
 
 }
-body > div {
+#sections {
     position: absolute;
     top: 0;
     left: 0;
@@ -16,17 +16,16 @@ body > div {
     background: black;
     color: gray;
     font-family: sans;
-
-    width: 320px;
 }
 h2 {
     margin: 6px;
 }
 .section {
     border: 1px solid gray;
-    margin: 3px 0;
+    margin: 3px 3px 3px 0;
     padding: 3px 0;
     overflow: hidden;
+    width: 320px;
 } 
 .ranCommand {
     margin: 10px;
@@ -56,7 +55,7 @@ button div.label {
 }
 .commands button img {
     top: -25px;
-    opacity: .4;
+    opacity: 1;
 }
 button.current { 
     opacity: 1;
@@ -136,10 +135,16 @@ a img {
     text-decoration:none;
     -moz-border-radius: 10px;
     -webkit-border-radius: 10px;
+    height: 58px;
 }
-.col2 {
-    -webkit-column-width: 104px;
-    -moz-column-width: 104px;
+.music a {
+    background: none repeat scroll 0 0 #2C2D18;
+    border-color: #676922;
+    color: #B9BC48;
+    height: auto;
+}
+.col2 > div {
+
 }
 
 #recentVisitors {
@@ -200,4 +205,26 @@ form.lowRank button {
 height: 30px;
 width: 80px;
 background: #565656;
+}
+
+
+/* from http://isotope.metafizzy.co/docs/animating.html */
+.isotope,
+.isotope .isotope-item {
+  /* change duration value to whatever you like */
+  -webkit-transition-duration: 0.8s;
+     -moz-transition-duration: 0.8s;
+          transition-duration: 0.8s;
+}
+
+.isotope {
+  -webkit-transition-property: height, width;
+     -moz-transition-property: height, width;
+          transition-property: height, width;
+}
+
+.isotope .isotope-item {
+  -webkit-transition-property: -webkit-transform, opacity;
+     -moz-transition-property:    -moz-transform, opacity;
+          transition-property:         transform, opacity;
 }

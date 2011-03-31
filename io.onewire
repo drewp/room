@@ -19,6 +19,17 @@ python support.
 2009-02-21 i'm now on ow.__version__ = '2.7p16-1.15'
 ./configure --disable-owtcl --disable-owperl --disable-owphp --disable-ha7 --disable-ownet --disable-ownetlib --disable-owserver --disable-parport
 
+2011-02-26 now on 2.8p6
+
+how to run their server:
+bang(pts/6):/my/dl/lib/owfs-2.8p6/module/owserver/src/c% sudo ./owserver -u -p 9999 --foreground --error_level 9 --error_print 2
+
+owshell/src/c/owget -s 9999 /uncached/10.52790F020800/temperature /uncached/10.4F718D000800/temperature /uncached/10.9AA2BE000800/temperature
+
+
+but the previous 2.7 version was getting 2/3 measurements, while 2.8
+was getting 1/3 measurements!
+
 """
 import time, logging, traceback
 from louie import dispatcher

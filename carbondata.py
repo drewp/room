@@ -1,5 +1,7 @@
 """
 upload data to a carbon server (http://graphite.wikidot.com/carbon) from twisted
+
+copied in netbars
 """
 from __future__ import division
 import time, math

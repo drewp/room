@@ -60,8 +60,9 @@ $(function () {
 	      '</td><td class="rssi">'+str(rest['rssi'])+
               '</td><td class="mac">'+str(rest['mac'])+
 	      '</td></tr>').appendTo(table).addClass(rest['rssi'] ? "signal" : "nosignal");
-	})
-	    }
+	});
+	$(window).trigger("relayout");
+    }
 
     $.getScript(tomatoUrl[0], 
 		function (data, textStatus) { renderTomato(data, "#wifi1") });
@@ -111,4 +112,19 @@ $(function () {
     }
     var t=new TempGraph();
 
+    function isotopeSections() {
+	var iso = $('#sections').isotope({
+	    itemSelector : '.section',
+	    layoutMode : 'masonry'
+	});
+	$(window).bind("relayout", function () { iso.isotope("reLayout"); });
+    }	
+    $(".col2").isotope({
+	itemSelector: "div",
+	layoutMode: 'fitRows',
+    });
+
+    if (notPhone) {
+	isotopeSections();
+    }
 });
