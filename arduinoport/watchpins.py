@@ -11,7 +11,7 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import getPage
 from dateutil.tz import tzutc
 from pymongo import Connection
-from rdflib import Namespace
+from rdflib import Namespace, Literal
 sys.path.append("/my/site/magma")
 from activitystream import ActivityStream
 from stategraph import StateGraph
@@ -39,6 +39,15 @@ class PinChange(cyclone.web.RequestHandler):
         # door unlock; then keep polling after that to know when we
         # should lock it again (no motion for a while, or door open)
     
+
+class InputChange(cyclone.web.RequestHandler):
+    def post(self):
+        msg = simplejson.loads(self.request.body)
+        msg['t'] = datetime.datetime.now(tzutc())
+        self.settings.mongo.insert(msg)
+
+        # trigger to entrancemusic? rdf graph change PSHB?
+
 class GraphHandler(cyclone.web.RequestHandler):
     """
     fetch the pins from drv right now (so we don't have stale data),
@@ -46,7 +55,7 @@ class GraphHandler(cyclone.web.RequestHandler):
     """
     @inlineCallbacks
     def get(self):
-        g = StateGraph(ctx=DEV['theaterArduino'])
+        g = StateGraph(ctx=DEV['houseSensors'])
 
         doorOpen = int((yield getPage("http://bang:9056/pin/d9")))
         g.add((DEV['theaterDoorOpen'], ROOM['state'],
@@ -56,6 +65,14 @@ class GraphHandler(cyclone.web.RequestHandler):
         g.add((DEV['theaterDoorOutsideMotion'], ROOM['state'],
                ROOM['motion'] if motion else ROOM['noMotion']))
 
+        try:
+            frontDoor = yield getPage("http://space:9080/door")
+            g.add((DEV['frontDoorOpen'], ROOM['state'],
+               ROOM[frontDoor] if frontDoor in ['open', 'closed'] else
+               ROOM['error']))
+        except Exception, e:
+            g.add((DEV['frontDoorOpen'], ROOM['error'], Literal(str(e))))
+
         self.set_header('Content-type', 'application/x-trig')
         self.write(g.asTrig())
         
@@ -63,8 +80,18 @@ class Activity(cyclone.web.RequestHandler):
     def get(self):
         a = ActivityStream()
         self.settings.mongo.ensure_index('t')
-        for row in self.settings.mongo.find(sort=[('t', -1)], limit=20):
+        remaining = {'downstairsDoorMotion':10, 'downstairsDoorOpen':10,
+                     'frontDoor':50}
+        for row in self.settings.mongo.find(sort=[('t', -1)], limit=200):
 
+            try:
+                r = remaining[row['name']]
+                if r < 1:
+                    continue
+                remaining[row['name']] = r - 1
+            except KeyError:
+                pass
+            
             # lots todo
             if row['name'] == 'downstairsDoorMotion':
                 if row['level'] == 0:
@@ -84,6 +111,14 @@ class Activity(cyclone.web.RequestHandler):
                        objectUri="...",
                        objectName="downstairs door",
                        objectIcon=None)
+            elif row['name'] == 'frontDoor':
+                kw = dict(actorUri="http://bigasterisk.com/foaf/someone",
+                       actorName="someone",
+                       verbUri="op",
+                       verbEnglish="opens" if row['state']=='open' else "closes",
+                       objectUri="...",
+                       objectName="front door",
+                       objectIcon=None)
             else:
                 raise NotImplementedError(row)
                     
@@ -99,6 +134,7 @@ class Application(cyclone.web.Application):
         handlers = [
             (r"/", Index),
             (r'/pinChange', PinChange),
+            (r'/inputChange', InputChange),
             (r'/activity', Activity),
             (r'/graph', GraphHandler),
         ]
