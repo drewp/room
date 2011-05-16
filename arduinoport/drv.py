@@ -26,7 +26,10 @@ def _num(name):
 
 class PrettyErrorHandler(cyclone.web.RequestHandler):
     def get_error_html(self, status_code, **kwargs):
-        tb = kwargs['exception'].getTraceback() if 'exception' in kwargs else ''
+        try:
+            tb = kwargs['exception'].getTraceback()
+        except AttributeError:
+            tb = ""
         return "<html><title>%(code)d: %(message)s</title>" \
                "<body>%(code)d: %(message)s<pre>%(tb)s</pre></body></html>" % {
             "code": status_code,
@@ -67,6 +70,13 @@ class Pid(PrettyErrorHandler):
 
 class index(PrettyErrorHandler):
     def get(self):
+        """
+        this is a suitable status check; it does a round-trip to arduino
+        """
+        # this would be a good ping() call for pyduino
+        self.settings.arduino.sp.write(chr(pyduino.REPORT_VERSION))
+        self.settings.arduino.iterate()
+        
         self.set_header("Content-Type", "application/xhtml+xml")
         self.write(open('index.html').read())
     
