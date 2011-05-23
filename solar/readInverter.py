@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import struct, time, sys, logging, traceback, os
-from serial import Serial
+from serial import Serial, SerialException
 sys.path.append("/my/proj/room")
 from carbondata import CarbonClient
 from twisted.internet.task import LoopingCall
@@ -59,7 +59,16 @@ class Poller(object):
 
     def reset(self):
         log.info("reopening serial port")
-        self.comm = Comm("/dev/ttyUSB0")
+        for port in ['/dev/ttyUSB0', '/dev/ttyUSB1']:
+            try:
+                self.comm = Comm(port)
+                break
+            except SerialException, e:
+                pass
+        else:
+            # among other things, a serial exception for too many open files 
+            log.error(e)
+            os.abort()
         log.info("version: %r", self.comm.request(device=1, number=0,
                                                   command="getVersion"))
 
