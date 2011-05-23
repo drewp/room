@@ -198,6 +198,7 @@ a img {
 .temp-bedroom    { color: #C80032; }
 .temp-ariBedroom { color: #0FB30F; }
 .temp-KSQL       { color: #966432; }
+.temp-frontDoor  { color: #e3e31f; }
 
 form.lowRank {
 }
@@ -205,6 +206,17 @@ form.lowRank button {
 height: 30px;
 width: 80px;
 background: #565656;
+}
+
+#frontDoorLcd, #frontDoorBottomLine {
+background: #5af199;
+color: #484848;
+font-family: monospace;
+width: 12.5em;
+overflow:hidden;
+font-size: 12px;
+padding: 4px;
+border: 0;
 }
 
 
@@ -227,4 +239,14 @@ background: #565656;
   -webkit-transition-property: -webkit-transform, opacity;
      -moz-transition-property:    -moz-transform, opacity;
           transition-property:         transform, opacity;
+}
+
+.prevSolar {
+    overflow: hidden;
+    width: 240px;
+    height: 76px; 
+}
+.prevSolar img {
+    position: relative;
+    top:-5px;
 }
