@@ -12,7 +12,7 @@ with PSHB, that their graph has changed.
 
 
 from twisted.internet import reactor, task
-import logging,  sys, jsonlib, datetime
+import logging,  sys, jsonlib, datetime, time
 from rdflib.Graph import Graph, ConjunctiveGraph
 from rdflib import Namespace, URIRef,  Literal
 import restkit
@@ -69,6 +69,8 @@ def graphEqual(a, b, ignorePredicates=[]):
 class Reasoning(object):
     def __init__(self):
         self.prevGraph = None
+        self.lastPollTime = 0
+        self.lastError = ""
 
         self.deviceGraph = Graph()
         self.deviceGraph.parse("/my/proj/room/devices.n3", format="n3")
@@ -85,8 +87,10 @@ class Reasoning(object):
     def poll(self):
         try:
             self._poll()
+            self.lastPollTime = time.time()
         except Exception, e:
             log.error(e)
+            self.lastError = str(e)
             
     def _poll(self):
         g = gatherGraph()
@@ -116,6 +120,13 @@ class Reasoning(object):
 
 class Index(cyclone.web.RequestHandler):
     def get(self):
+        # make sure GET / fails if our poll loop died
+        ago = time.time() - self.settings.reasoning.lastPollTime
+        if ago > 2:
+            self.set_status(500)
+            self.finish("last poll was %s sec ago. last error: %s" %
+                        (ago, self.settings.reasoning.lastError))
+            return
         self.set_header("Content-Type", "application/xhtml+xml")
         self.write(open('reasoning.html').read())
 
