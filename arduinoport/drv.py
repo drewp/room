@@ -11,10 +11,12 @@ Note that there are some startup delays and you may not hear about
 input changes for a few seconds.
 """
 from __future__ import division
-import sys, cyclone.web, time, httplib, cgi, simplejson, os
+import sys, cyclone.web, time, httplib, cgi, simplejson, os, logging
 from twisted.web.client import getPage
-from twisted.python import log
 from twisted.internet import reactor, task
+
+logging.basicConfig()
+log = logging.getLogger()
 
 sys.path.append("pyduino-read-only")
 import pyduino 
@@ -47,7 +49,7 @@ class pin(PrettyErrorHandler):
     def put(self, name):
         t1 = time.time()
         self.settings.arduino.digital[_num(name)].write(int(self.request.body))
-        log.msg("arduino write in %.1f ms" % (1000 * (time.time() - t1)))
+        log.info("arduino write in %.1f ms" % (1000 * (time.time() - t1)))
         
 
 class pinMode(PrettyErrorHandler):
@@ -111,14 +113,13 @@ class WatchPins(object):
                      pyduino.DIGITAL_INPUT]
 
     def reportPostError(self, fail, pin, value, url):
-        log.err("failed to send pin %s update (now %s) to %r: %r" % (pin, value, url, fail)) 
+        log.error("failed to send pin %s update (now %s) to %r: %r" % (pin, value, url, fail)) 
         
     def poll(self):
         try:
             self._poll()
         except Exception, e:
-            log.err("during poll:")
-            log.err(e)
+            log.error("during poll:", exc_info=1)
 
     def _poll(self):
         # this can IndexError for a port number being out of
@@ -149,7 +150,6 @@ if __name__ == '__main__':
         # todo: need options to preset inputs/outputs at startup
         }
 
-    #log.startLogging(sys.stdout)
     arduino = pyduino.Arduino(config['arduinoPort'])
     wp = WatchPins(arduino, config)
     task.LoopingCall(wp.poll).start(1/config['pollFrequency'])
