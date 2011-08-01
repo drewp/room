@@ -12,7 +12,8 @@ with PSHB, that their graph has changed.
 
 
 from twisted.internet import reactor, task
-import logging,  sys, jsonlib, datetime, time
+from twisted.web.client import getPage
+import logging,  sys, jsonlib, datetime, time, traceback
 from rdflib.Graph import Graph, ConjunctiveGraph
 from rdflib import Namespace, URIRef,  Literal
 import restkit
@@ -24,22 +25,25 @@ from FuXi.Rete.RuleStore import N3RuleStore
 import cyclone.web
 
 log = commonlogsetup(filename=None)
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARN)
 logging.getLogger('restkit.client').setLevel(logging.WARN)
 ROOM = Namespace("http://projects.bigasterisk.com/room/")
 DEV = Namespace("http://projects.bigasterisk.com/device/")
 from inference import  addTrig, infer
- 
+
 def gatherGraph():
     g = ConjunctiveGraph()
-    for source in ["http://bang:9069/graph", "http://bang:9070/graph"]:
-        addTrig(g, source)
+    for source in ["http://bang:9069/graph", # arduino watchpins 
+                   "http://bang:9070/graph", # wifi usage
+                   "http://bang:9075/graph", # env
+                   "http://slash:9050/graph", # garageArduino for front motion
+                   ]:
+        try:
+            addTrig(g, source)
+        except:
+            log.error("adding source %s", source)
+            raise
 
-    ctx = ROOM.clock
-    g.addN([
-        (ROOM.localHour, ROOM.state, Literal(datetime.datetime.now().hour),
-         ctx),
-        ])
     return g
 
 def graphWithoutMetadata(g, ignorePredicates=[]):
@@ -89,33 +93,65 @@ class Reasoning(object):
             self._poll()
             self.lastPollTime = time.time()
         except Exception, e:
-            log.error(e)
+            log.error(traceback.format_exc())
             self.lastError = str(e)
-            
+
     def _poll(self):
         g = gatherGraph()
-        if (self.prevGraph is not None and
-            graphEqual(g, self.prevGraph,
-                       ignorePredicates=[ROOM.signalStrength])):
-            return
+        if (self.prevGraph is None or
+            not graphEqual(g, self.prevGraph,
+                           ignorePredicates=[ROOM.signalStrength])):
+            self.graphChanged(g)
+
         self.prevGraph = g
-        self.graphChanged(g)
 
     def graphChanged(self, g):
         # i guess these are getting consumed each inference
-        self.readRules()
-        self.inferred = infer(g, self.ruleStore)
+        try:
+            t1 = time.time()
+            self.readRules()
+            ruleParseTime = time.time() - t1
+        except ValueError, e:
+            # this is so if you're just watching the inferred output,
+            # you'll see the error too
+            self.inferred = Graph()
+            self.inferred.add((ROOM['reasoner'], ROOM['ruleParseError'],
+                               Literal(traceback.format_exc())))
+            raise
 
-        print "new inferred graph:"
-        for stmt in self.inferred:
-            print " ", stmt
+        t1 = time.time()
+        self.inferred = infer(g, self.ruleStore)
+        inferenceTime = time.time() - t1
+
+        self.inferred.add((ROOM['reasoner'], ROOM['ruleParseTime'],
+                           Literal(ruleParseTime)))
+        self.inferred.add((ROOM['reasoner'], ROOM['inferenceTime'],
+                           Literal(inferenceTime)))
 
         for dev in [DEV.theaterDoorLock]:
             url = self.deviceGraph.value(dev, ROOM.putUrl)
-            value = "1" if (dev, ROOM.state, ROOM.unlocked) in self.inferred else "0"
-            print "put %s to %s" % (value, url)
+
+            putValue = self.deviceGraph.value(ROOM.unlocked, ROOM.putValue)
+            zeroValue = self.deviceGraph.value(dev, ROOM.zeroValue)
+
+            value = putValue if (dev, ROOM.state, ROOM.unlocked) in self.inferred else zeroValue
+            log.info("put %s to %s", value, url)
             restkit.request(url=url+"/mode", method="PUT", body="output")
             restkit.request(url=url, method="PUT", body=value)
+
+
+        # todo: shouldn't have to be a special case
+        brt = self.inferred.value(DEV.frontDoorLcd, ROOM.brightness)
+        url = self.deviceGraph.value(DEV.frontDoorLcdBrightness,
+                                       ROOM.putUrl)
+        log.info("put lcd %s brightness %s", url, brt)
+        getPage(str(url) + "?brightness=%s" % str(brt), method="PUT")
+
+        msg = "open %s motion %s" % (self.inferred.value(DEV['frontDoorOpenIndicator'], ROOM.text),
+                                     self.inferred.value(DEV['frontDoorMotionIndicator'], ROOM.text))
+        # this was meant to be 2 chars in the bottom row, but the
+        # easier test was to replace the whole top msg
+        #restkit.Resource("http://space:9080/").put("lcd", message=msg)
 
 
 class Index(cyclone.web.RequestHandler):
@@ -159,8 +195,8 @@ class Application(cyclone.web.Application):
 
 if __name__ == '__main__':
     r = Reasoning()
-    import twisted.python.log
-    twisted.python.log.startLogging(sys.stdout)
+    #import twisted.python.log
+    #twisted.python.log.startLogging(sys.stdout)
     
     task.LoopingCall(r.poll).start(1.0)
     reactor.listenTCP(9071, Application(r))

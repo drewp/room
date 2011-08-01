@@ -19,7 +19,7 @@ def parseTrig(trig):
     """
     m = re.match(r"<([^>]+)> \{(.*)\}\s*$", trig, re.DOTALL)
     if m is None:
-        raise NotImplementedError("trig format was too tricky")
+        raise NotImplementedError("trig format was too tricky: %r..." % trig[:200])
         
     ctx = m.group(1)
     n3 = m.group(2)
@@ -44,6 +44,19 @@ def infer(graph, rules):
     store.rollback()
     return target
 
+import time, logging
+log = logging.getLogger()
+def logTime(func):
+    def inner(*args, **kw):
+        t1 = time.time()
+        try:
+            ret = func(*args, **kw)
+        finally:
+            log.info("Call to %s took %.1f ms" % (
+                func.__name__, 1000 * (time.time() - t1)))
+        return ret
+    return inner
+
 def addTrig(graph, url):
-    trig = restkit.request(url).body_string()
+    trig = logTime(restkit.request)(url).body_string()
     graph.addN(parseTrig(trig))

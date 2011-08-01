@@ -44,7 +44,7 @@ from carbondata import CarbonClient
 from logsetup import commonlogsetup
 
 log = commonlogsetup(filename=None)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 class TempReader(object):
     def __init__(self):

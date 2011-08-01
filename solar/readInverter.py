@@ -85,7 +85,7 @@ class Poller(object):
             traceback.print_exc()
             os.abort()
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.DEBUG)
 carbon = CarbonClient(serverHost='bang')
 p = Poller(carbon)
 reactor.run()

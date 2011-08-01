@@ -105,6 +105,9 @@ button.recommend {
 .imgFrame img {
     position: relative;
 }
+.imgFrame a {
+    font-size: 10px;
+} 
 a {
     text-decoration: none;
     color: #00f;
@@ -208,7 +211,7 @@ width: 80px;
 background: #565656;
 }
 
-#frontDoorLcd, #frontDoorBottomLine {
+#frontDoorLcd, #frontDoorLastLine {
 background: #5af199;
 color: #484848;
 font-family: monospace;
@@ -217,6 +220,11 @@ overflow:hidden;
 font-size: 12px;
 padding: 4px;
 border: 0;
+}
+#frontDoorSave {
+position: absolute;
+top: 0;
+right: 0;
 }
 
 
