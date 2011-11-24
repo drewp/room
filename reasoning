@@ -19,7 +19,7 @@ from rdflib import Namespace, URIRef,  Literal
 import restkit
 from logsetup import commonlogsetup
 
-sys.path.append("/my/proj/room/fuxi/build/lib.linux-x86_64-2.6")
+sys.path.append("/my/proj/room/fuxi/build/lib.linux-x86_64-2.7")
 from FuXi.Rete.RuleStore import N3RuleStore
 
 import cyclone.web
@@ -151,7 +151,7 @@ class Reasoning(object):
                                      self.inferred.value(DEV['frontDoorMotionIndicator'], ROOM.text))
         # this was meant to be 2 chars in the bottom row, but the
         # easier test was to replace the whole top msg
-        #restkit.Resource("http://space:9080/").put("lcd", message=msg)
+        #restkit.Resource("http://slash:9080/").put("lcd", message=msg)
 
 
 class Index(cyclone.web.RequestHandler):

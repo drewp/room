@@ -59,4 +59,8 @@ device:theaterDoorOutsideMotion rdfs:label "theater door outside motion" .
 device:theaterDoorOpen rdfs:label "theater door open" .
 
 device:theaterDoorLock rdfs:label "theater door lock";
-		       :putUrl "http://bang:9056/pin/d3".
+		       :putUrl "http://bang:9056/pin/d3"; :zeroValue "0".
+
+:unlocked :putValue "1" .
+
+device:frontDoorLcdBrightness :putUrl "http://slash:9080/lcd/backlight" .
