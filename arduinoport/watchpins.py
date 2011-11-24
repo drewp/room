@@ -57,6 +57,8 @@ class GraphHandler(cyclone.web.RequestHandler):
     def get(self):
         g = StateGraph(ctx=DEV['houseSensors'])
 
+        frontDoorDefer = getPage("http://slash:9080/door") # head start?
+
         doorOpen = int((yield getPage("http://bang:9056/pin/d9")))
         g.add((DEV['theaterDoorOpen'], ROOM['state'],
                ROOM['open'] if doorOpen else ROOM['closed']))
@@ -66,7 +68,7 @@ class GraphHandler(cyclone.web.RequestHandler):
                ROOM['motion'] if motion else ROOM['noMotion']))
 
         try:
-            frontDoor = yield getPage("http://space:9080/door")
+            frontDoor = yield frontDoorDefer
             g.add((DEV['frontDoorOpen'], ROOM['state'],
                ROOM[frontDoor] if frontDoor in ['open', 'closed'] else
                ROOM['error']))
