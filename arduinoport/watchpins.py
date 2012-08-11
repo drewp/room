@@ -11,7 +11,8 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import getPage
 from dateutil.tz import tzutc
 from pymongo import Connection
-from rdflib import Namespace, Literal
+from rdflib import Namespace, Literal, Graph
+from rdflib.parser import StringInputSource
 sys.path.append("/my/site/magma")
 from activitystream import ActivityStream
 from stategraph import StateGraph
