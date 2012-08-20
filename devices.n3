@@ -10,7 +10,8 @@
 @prefix bang1: <http://bigasterisk.com/bang/arduino/pin/> .
 
 :putUrl rdfs:comment "this pin can be set by calling PUT on the given url with a body of '0' or '1'" .
-device:frontLights a :ParportPin; :putUrl "http://slash:9014/otherBit?bit=1" .
+# no longer parport; needs upgrade to whatever the arduino pin is:
+#device:frontLights a :ParportPin; :putUrl "http://slash:9014/otherBit?bit=1" .
 
 device:heater :putUrl "http://bang:9056/pin/d4" .
 

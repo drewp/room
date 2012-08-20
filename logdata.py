@@ -2,7 +2,7 @@
 """
 listen for some signals and log them in files
 """
-
+raise "no longer used?"
 import sys
 # from /usr/share/doc/python-xml/changelog.Debian.gz, to make
 # xml.utils.iso8601 available on ubuntu 8.04+
@@ -30,7 +30,7 @@ history = []
 def dataIn(**kw):
     now = time.time()
     if kw['signal'] == 'temps':
-        print now, sorted(kw['temps'].items())
+        #print now, sorted(kw['temps'].items())
 
         typed = dict([(k.decode('ascii'), float(v))
                       for k,v in kw['temps'].items()])

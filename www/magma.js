@@ -1,4 +1,4 @@
-
+// this version is old; moved to magma_gui.js
 $(function () {
     $(".services").load("/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=28 table.status", function () {
 	$(window).trigger("relayout");

@@ -1,3 +1,6 @@
+/*
+moved to magma. rm this
+*/
 * {
     margin: 0;
     padding: 0;
@@ -258,3 +261,9 @@ right: 0;
     position: relative;
     top:-5px;
 }
+.transactions { font-size: 80%; }
+.transactions td { vertical-align: top; }
+.transactions td.date, .transactions td.amt {
+ white-space: nowrap;
+}
+.transactions tr.recent { color: yellow; }
