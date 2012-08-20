@@ -4,10 +4,11 @@ records interesting events to mongodb, sends further messages.
 
 Will also serve activity stream.
 """
-import sys, os, datetime, cyclone.web, simplejson
+import sys, os, datetime, cyclone.web, simplejson, time
 from twisted.python import log
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.error import ConnectError
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.web.client import getPage
 from dateutil.tz import tzutc
 from pymongo import Connection
@@ -16,15 +17,18 @@ from rdflib.parser import StringInputSource
 sys.path.append("/my/site/magma")
 from activitystream import ActivityStream
 from stategraph import StateGraph
+     
+sys.path.append("/my/proj/homeauto/lib")
+from cycloneerr import PrettyErrorHandler
 
 DEV = Namespace("http://projects.bigasterisk.com/device/")
 ROOM = Namespace("http://projects.bigasterisk.com/room/")
 
-class Index(cyclone.web.RequestHandler):
+class Index(PrettyErrorHandler, cyclone.web.RequestHandler):
     def get(self):
         self.write("watchpins, writes to mongo db=house collection=sensor")
 
-class PinChange(cyclone.web.RequestHandler):
+class PinChange(PrettyErrorHandler, cyclone.web.RequestHandler):
     def post(self):
         # there should be per-pin debounce settings so we don't log
         # all the noise of a transition change
@@ -36,12 +40,10 @@ class PinChange(cyclone.web.RequestHandler):
                        }[msg['pin']]
         self.settings.mongo.insert(msg)
 
-        # triggers go here: new motion means we need to consider a
-        # door unlock; then keep polling after that to know when we
-        # should lock it again (no motion for a while, or door open)
-    
+        if msg['pin'] == 10 and msg['level'] == 1:
+            self.settings.history['lastMotion'] = msg['t']
 
-class InputChange(cyclone.web.RequestHandler):
+class InputChange(PrettyErrorHandler, cyclone.web.RequestHandler):
     def post(self):
         msg = simplejson.loads(self.request.body)
         msg['t'] = datetime.datetime.now(tzutc())
@@ -49,7 +51,7 @@ class InputChange(cyclone.web.RequestHandler):
 
         # trigger to entrancemusic? rdf graph change PSHB?
 
-class GraphHandler(cyclone.web.RequestHandler):
+class GraphHandler(PrettyErrorHandler, cyclone.web.RequestHandler):
     """
     fetch the pins from drv right now (so we don't have stale data),
     and return an rdf graph describing what we know about the world
@@ -68,6 +70,22 @@ class GraphHandler(cyclone.web.RequestHandler):
         g.add((DEV['theaterDoorOutsideMotion'], ROOM['state'],
                ROOM['motion'] if motion else ROOM['noMotion']))
 
+        now = datetime.datetime.now(tzutc())
+        lastMotion = self.settings.history['lastMotion']
+        g.add((DEV['theaterDoorOutsideMotionRecent'], ROOM['state'],
+               ROOM['motion']
+               if (now - lastMotion) < datetime.timedelta(seconds=10)
+               else ROOM['noMotion']))
+
+        t1 = time.time()
+        try:
+            for s in (yield self.getBedroomStatements()):
+                g.add(s)
+        except ConnectError, e:
+            g.add((ROOM['bedroomStatementFetch'], ROOM['error'],
+                   Literal("getBedroomStatements: %s" % e)))
+            
+
         try:
             frontDoor = yield frontDoorDefer
             g.add((DEV['frontDoorOpen'], ROOM['state'],
@@ -78,15 +96,28 @@ class GraphHandler(cyclone.web.RequestHandler):
 
         self.set_header('Content-type', 'application/x-trig')
         self.write(g.asTrig())
+
+    @inlineCallbacks
+    def getBedroomStatements(self):
+        trig = yield getPage("http://bang:9088/graph")
+        stmts = set()
+        for line in trig.splitlines():
+            if "http://projects.bigasterisk.com/device/bedroomMotion" in line:
+                g = Graph()
+                g.parse(StringInputSource(line+"\n"), format="nt")
+                for s in g:
+                    stmts.add(s)
+        returnValue(stmts)
         
-class Activity(cyclone.web.RequestHandler):
+class Activity(PrettyErrorHandler, cyclone.web.RequestHandler):
     def get(self):
         a = ActivityStream()
         self.settings.mongo.ensure_index('t')
         remaining = {'downstairsDoorMotion':10, 'downstairsDoorOpen':10,
-                     'frontDoor':50}
-        for row in self.settings.mongo.find(sort=[('t', -1)], limit=200):
-
+                     'frontDoorMotion':10, 'frontDoor':50}
+        recent = {}
+        for row in reversed(list(self.settings.mongo.find(sort=[('t', -1)],
+                                                     limit=5000))):
             try:
                 r = remaining[row['name']]
                 if r < 1:
@@ -105,7 +136,8 @@ class Activity(cyclone.web.RequestHandler):
                     verbUri="...",
                     verbEnglish="sees",
                     objectUri="...",
-                    objectName="backyard motion")
+                    objectName="backyard motion",
+                    objectIcon="/magma/static/backyardMotion.png")
             elif row['name'] == 'downstairsDoorOpen':
                 kw = dict(actorUri="http://bigasterisk.com/foaf/someone",
                        actorName="someone",
@@ -113,7 +145,7 @@ class Activity(cyclone.web.RequestHandler):
                        verbEnglish="opens" if row['level'] else "closes",
                        objectUri="...",
                        objectName="downstairs door",
-                       objectIcon=None)
+                       objectIcon="/magma/static/downstairsDoor.png")
             elif row['name'] == 'frontDoor':
                 kw = dict(actorUri="http://bigasterisk.com/foaf/someone",
                        actorName="someone",
@@ -121,7 +153,21 @@ class Activity(cyclone.web.RequestHandler):
                        verbEnglish="opens" if row['state']=='open' else "closes",
                        objectUri="...",
                        objectName="front door",
-                       objectIcon=None)
+                       objectIcon="/magma/static/frontDoor.png")
+            elif row['name'] == 'frontDoorMotion':
+                if row['state'] == False:
+                    continue
+                if 'frontDoorMotion' in recent:
+                    pass#if row['t'
+                kw = dict(
+                    actorUri="http://...",
+                    actorName="front door",
+                    verbUri="...",
+                    verbEnglish="sees",
+                    objectUri="...",
+                    objectName="front yard motion",
+                    objectIcon="/magma/static/frontYardMotion.png")
+                recent['frontDoorMotion'] = kw
             else:
                 raise NotImplementedError(row)
                     
@@ -143,7 +189,8 @@ class Application(cyclone.web.Application):
         ]
         settings = {
             'mongo' : Connection('bang', 27017,
-                                 tz_aware=True)['house']['sensor']
+                                 tz_aware=True)['house']['sensor'],
+            'history' : {'lastMotion' : datetime.datetime.fromtimestamp(0, tzutc())},
             }
         cyclone.web.Application.__init__(self, handlers, **settings)
 
