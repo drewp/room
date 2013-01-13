@@ -8,6 +8,7 @@
 @prefix onewire: <http://bigasterisk.com/onewire/> .
 @prefix cmd: <http://bigasterisk.com/magma/cmd/> .
 @prefix bang1: <http://bigasterisk.com/bang/arduino/pin/> .
+@prefix cl: <http://bigasterisk.com/ns/command/v1#> .
 
 :putUrl rdfs:comment "this pin can be set by calling PUT on the given url with a body of '0' or '1'" .
 # no longer parport; needs upgrade to whatever the arduino pin is:
@@ -63,5 +64,22 @@ device:theaterDoorLock rdfs:label "theater door lock";
 		       :putUrl "http://bang:9056/pin/d3"; :zeroValue "0".
 
 :unlocked :putValue "1" .
+:on :putValue "on" .
+:off :putValue "off" .
 
 device:frontDoorLcdBrightness :putUrl "http://slash:9080/lcd/backlight" .
+
+<http://bigasterisk.com/host/bang/monitor> 
+  :putUrl "http://bang:9095/monitor";
+  :zeroValue "off" .
+
+<http://bigasterisk.com/host/dash/monitor> 
+  :putUrl "http://dash:9095/monitor" .
+
+device:heater cl:valueMapping
+  [cl:value cl:on; cl:putUrl <http://bang:9056/pin/d4>; cl:putBody "1"  ],
+  [cl:value cl:off; cl:putUrl <http://bang:9056/pin/d4>; cl:putBody "0" ] . 
+
+device:frontLight cl:valueMapping
+  [cl:value cl:on; cl:putUrl <http://slash:9080/yardLight>; cl:putBody "true"  ],
+  [cl:value cl:off; cl:putUrl <http://slash:9080/yardLight>; cl:putBody "false" ] .
