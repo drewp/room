@@ -114,10 +114,11 @@ class Activity(PrettyErrorHandler, cyclone.web.RequestHandler):
         a = ActivityStream()
         self.settings.mongo.ensure_index('t')
         remaining = {'downstairsDoorMotion':10, 'downstairsDoorOpen':10,
-                     'frontDoorMotion':10, 'frontDoor':50}
+                     'frontDoorMotion':10, 'frontDoor':50, 'bedroomMotion': 10}
         recent = {}
-        for row in reversed(list(self.settings.mongo.find(sort=[('t', -1)],
-                                                     limit=5000))):
+        toAdd = []
+        for row in list(self.settings.mongo.find(sort=[('t', -1)],
+                                                     limit=5000)):
             try:
                 r = remaining[row['name']]
                 if r < 1:
@@ -168,11 +169,27 @@ class Activity(PrettyErrorHandler, cyclone.web.RequestHandler):
                     objectName="front yard motion",
                     objectIcon="/magma/static/frontYardMotion.png")
                 recent['frontDoorMotion'] = kw
+            elif row['name'] == 'bedroomMotion':
+                if not row['state']:
+                    continue
+                kw = dict(
+                    actorUri="http://...",
+                    actorName="bedroom",
+                    verbUri="...",
+                    verbEnglish="sees",
+                    objectUri="...",
+                    objectName="bedroom motion",
+                    objectIcon="/magma/static/bedroomMotion.png")
+                recent['bedroomMotion'] = kw
             else:
                 raise NotImplementedError(row)
                     
             kw.update({'published' : row['t'],
                        'entryUriComponents' : ('sensor', row['board'])})
+            toAdd.append(kw)
+
+        toAdd.reverse()
+        for kw in toAdd:
             a.addEntry(**kw)
             
         self.set_header("Content-type", "application/atom+xml")
